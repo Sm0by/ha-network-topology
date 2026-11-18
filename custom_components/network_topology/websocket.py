@@ -10,7 +10,7 @@ from homeassistant.components import websocket_api
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant, callback
 
-from .const import DOMAIN, WS_GET, WS_SUBSCRIBE
+from .const import DOMAIN, WS_DEBUG, WS_GET, WS_SUBSCRIBE
 
 if TYPE_CHECKING:
     from .coordinator import NetworkTopologyCoordinator
@@ -29,6 +29,7 @@ def async_register_websocket_commands(hass: HomeAssistant) -> None:
     """Register all commands."""
     websocket_api.async_register_command(hass, ws_get)
     websocket_api.async_register_command(hass, ws_subscribe)
+    websocket_api.async_register_command(hass, ws_debug_sources)
 
 
 @websocket_api.websocket_command({vol.Required("type"): WS_GET})
@@ -42,6 +43,26 @@ def ws_get(
         connection.send_error(msg["id"], "not_loaded", "Network Topology is not set up")
         return
     connection.send_result(msg["id"], coordinator.data)
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required("type"): WS_DEBUG})
+@callback
+def ws_debug_sources(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Raw collector input (Bluetooth, registry MACs), for checking against real data."""
+    from .collectors.bluetooth import async_get_bluetooth, async_registry_by_mac
+
+    bt = async_get_bluetooth(hass)
+    connection.send_result(
+        msg["id"],
+        {
+            "bluetooth_scanners": bt[0] if bt else None,
+            "bluetooth_devices": bt[1] if bt else None,
+            "registry_by_mac": async_registry_by_mac(hass),
+        },
+    )
 
 
 @websocket_api.websocket_command({vol.Required("type"): WS_SUBSCRIBE})

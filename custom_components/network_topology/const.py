@@ -19,3 +19,4 @@ DEFAULT_MIN_SWITCH_DEVICES = 2
 
 WS_GET = f"{DOMAIN}/get"
 WS_SUBSCRIBE = f"{DOMAIN}/subscribe"
+WS_DEBUG = f"{DOMAIN}/debug_sources"

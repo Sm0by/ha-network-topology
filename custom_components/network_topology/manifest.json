@@ -1,7 +1,7 @@
 {
   "domain": "network_topology",
   "name": "Network Topology",
-  "after_dependencies": ["fritz", "zha", "bluetooth"],
+  "after_dependencies": ["fritz", "zha", "bluetooth", "esphome"],
   "codeowners": ["@Sm0by"],
   "config_flow": true,
   "dependencies": ["network", "websocket_api"],

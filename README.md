@@ -5,7 +5,9 @@ Custom Integration, die das Heimnetz als einen Graphen zusammenführt:
 - **LAN und WLAN** aus der Mesh-Topologie der FRITZ!Box (TR-064), inklusive Repeater, Band und RSSI
 - **Passive Switches**: Manche erkennt die FRITZ!Box selbst (`device_class: NETWORK_SWITCH`). Die übrigen werden abgeleitet, wenn mehrere Geräte an einem LAN-Port hängen. Namen und Standorte kommen aus `network_topology.yaml`.
 - **Zigbee (ZHA)**: Koordinator am HA-Host, Router und End Devices als Baum mit LQI. Weitere Funkverbindungen zwischen Routern stehen in `mesh`.
-- **Bluetooth**: folgt in Schritt 4
+- **Bluetooth**: Scanner (Adapter am HA-Host, ESPHome-Proxys) mit den BLE-Geräten, die zu einem HA-Gerät gehören. Jedes Gerät hängt am Scanner mit dem stärksten RSSI, weitere Scanner stehen in `mesh`. Proxys werden über das HA-Geräteregister mit ihrem LAN/WLAN-Knoten zusammengeführt, weil ihre Bluetooth-MAC von der Netzwerk-MAC abweicht.
+- **HA-Geräteregister**: LAN/WLAN-Geräte bekommen über ihre MAC die HA-Geräte-ID und den in HA vergebenen Namen.
+- **Robust**: Ist die FRITZ!Box nicht erreichbar, erscheinen Zigbee und Bluetooth trotzdem. Die Meldung steht dann in `warnings`.
 
 Die Daten stehen über die WebSocket-API bereit und werden später von der Lovelace-Karte `network-topology-card` gezeichnet.
 
@@ -16,7 +18,7 @@ Die Daten stehen über die WebSocket-API bereit und werden später von der Lovel
 | 1 | FRITZ!Box-Collector, Probe-Skript | fertig, an FRITZ!Box 7590 AX (FRITZ!OS 8.25, Mesh-Schema 8.7) geprüft |
 | 2 | Switch-Ableitung + YAML | fertig, mit echten Daten geprüft |
 | 3 | ZHA-Collector, Zigbee-Baum | fertig, mit echten ZHA-Daten geprüft (46 Geräte) |
-| 4 | Bluetooth-Collector, Zusammenführung über MAC | offen |
+| 4 | Bluetooth-Collector, Zusammenführung über MAC | fertig (Unit-Tests), wartet auf Test in HA |
 | 5 | Lovelace-Karte | offen |
 | 6 | Sensoren, HACS-Paket | offen |
 
@@ -76,6 +78,7 @@ Der FRITZ!Box-Benutzer braucht das Recht „FRITZ!Box Einstellungen“.
 |---|---|
 | `network_topology/get` | aktueller Graph |
 | `network_topology/subscribe` | Graph sofort und nach jeder Aktualisierung (alle 60 s) |
+| `network_topology/debug_sources` | Rohdaten der Bluetooth- und Registry-Collectors (nur Admin) |
 
 Zum Ausprobieren in den Entwicklerwerkzeugen des Browsers:
 

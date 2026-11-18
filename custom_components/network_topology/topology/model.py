@@ -23,6 +23,10 @@ WAN = "wan"
 LAN = "lan"
 WLAN = "wlan"
 ZIGBEE = "zigbee"
+BLUETOOTH = "bluetooth"
+
+BLUETOOTH_DEVICE = "bluetooth_device"
+BLUETOOTH_SCANNER = "bluetooth_scanner"  # proxy that is not in the LAN data
 USB = "usb"  # radio attached to the Home Assistant host
 
 

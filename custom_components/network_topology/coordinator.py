@@ -27,6 +27,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
+from .collectors.bluetooth import async_get_bluetooth, async_registry_by_mac
 from .collectors.fritz import FritzCredentials, FritzSource
 from .collectors.zha import (
     async_get_radio_path,
@@ -44,6 +45,7 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
 )
+from .topology.ble_parse import add_bluetooth, enrich_from_registry
 from .topology.fritz_parse import parse_mesh
 from .topology.model import Topology
 from .topology.rescan import RescanPlanner, all_routers, conflict_candidates
@@ -151,37 +153,56 @@ class NetworkTopologyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._fritz = FritzSource(creds)
             self._creds = creds
 
+        # Each source may fail on its own; the others still produce a graph.
+        fritz_error: str | None = None
         try:
             mesh, hosts = await self.hass.async_add_executor_job(self._fritz.fetch)
         except FritzAuthorizationError as err:
-            raise UpdateFailed(f"FRITZ!Box rejected the login: {err}") from err
+            fritz_error = f"FRITZ!Box rejected the login: {err}"
         except (FritzConnectionException, OSError) as err:
-            raise UpdateFailed(f"FRITZ!Box not reachable: {err}") from err
+            fritz_error = f"FRITZ!Box not reachable: {err}"
+
+        if fritz_error is None:
+            try:
+                raw_config = await self.hass.async_add_executor_job(
+                    _read_config_file, Path(self.hass.config.path(CONFIG_FILE))
+                )
+            except (OSError, yaml.YAMLError) as err:
+                _LOGGER.warning("Could not read %s: %s", CONFIG_FILE, err)
+                raw_config = None
+            topo = parse_mesh(mesh, hosts)
+            configs, config_warnings = load_config(raw_config)
+            topo.warnings.extend(config_warnings)
+            apply_switches(topo, configs, min_devices=DEFAULT_MIN_SWITCH_DEVICES)
+            enrich_from_registry(topo, async_registry_by_mac(self.hass))
+        else:
+            _LOGGER.warning("%s; continuing without LAN/WLAN data", fritz_error)
+            topo = Topology(warnings=[fritz_error])
 
         try:
-            raw_config = await self.hass.async_add_executor_job(
-                _read_config_file, Path(self.hass.config.path(CONFIG_FILE))
-            )
-        except (OSError, yaml.YAMLError) as err:
-            _LOGGER.warning("Could not read %s: %s", CONFIG_FILE, err)
-            raw_config = None
+            ha_ip = await async_get_source_ip(self.hass)
+        except (OSError, ValueError):
+            ha_ip = None
+        radio_node, radio = attach_point(
+            topo, ha_ip, radio_host(async_get_radio_path(self.hass))
+        )
+        host_id = next(
+            (n.id for n in topo.nodes.values() if n.attrs.get("home_assistant")), None
+        )
 
-        topo = parse_mesh(mesh, hosts)
-        configs, config_warnings = load_config(raw_config)
-        topo.warnings.extend(config_warnings)
-        apply_switches(topo, configs, min_devices=DEFAULT_MIN_SWITCH_DEVICES)
+        if zha_devices := async_get_zha_devices(self.hass):
+            add_zigbee(topo, zha_devices, host_id=radio_node, radio_link=radio)
 
-        zha_devices = async_get_zha_devices(self.hass)
-        if zha_devices:
-            try:
-                ha_ip = await async_get_source_ip(self.hass)
-            except (OSError, ValueError):
-                ha_ip = None
-            host_id, radio = attach_point(
-                topo, ha_ip, radio_host(async_get_radio_path(self.hass))
-            )
-            add_zigbee(topo, zha_devices, host_id=host_id, radio_link=radio)
-        # Bluetooth follows in step 4.
+        try:
+            if (bt := async_get_bluetooth(self.hass)) is not None:
+                scanners, ble_devices = bt
+                add_bluetooth(topo, scanners, ble_devices, host_id=host_id)
+        except Exception as err:  # Bluetooth internals change often; never fail the update
+            _LOGGER.warning("Bluetooth data unavailable: %s", err, exc_info=True)
+            topo.warnings.append(f"Bluetooth data unavailable: {err}")
+
+        if fritz_error and len(topo.nodes) <= 1:
+            raise UpdateFailed(fritz_error)
 
         self.topology = topo
         if self.config_entry.options.get(CONF_AUTO_RESCAN, DEFAULT_AUTO_RESCAN):
