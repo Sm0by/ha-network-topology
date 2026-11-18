@@ -3,7 +3,7 @@
 Custom Integration, die das Heimnetz als einen Graphen zusammenführt:
 
 - **LAN und WLAN** aus der Mesh-Topologie der FRITZ!Box (TR-064), inklusive Repeater, Band und RSSI
-- **Passive Switches**: automatisch abgeleitet, wenn mehrere Geräte an einem LAN-Port hängen, ergänzt durch `network_topology.yaml`
+- **Passive Switches**: Manche erkennt die FRITZ!Box selbst (`device_class: NETWORK_SWITCH`). Die übrigen werden abgeleitet, wenn mehrere Geräte an einem LAN-Port hängen. Namen und Standorte kommen aus `network_topology.yaml`.
 - **Zigbee (ZHA)** und **Bluetooth**: folgen in den nächsten Schritten
 
 Die Daten stehen über die WebSocket-API bereit und werden später von der Lovelace-Karte `network-topology-card` gezeichnet.
@@ -12,8 +12,8 @@ Die Daten stehen über die WebSocket-API bereit und werden später von der Lovel
 
 | Schritt | Inhalt | Status |
 |---|---|---|
-| 1 | FRITZ!Box-Collector, Probe-Skript | fertig, wartet auf Test an echter Box |
-| 2 | Switch-Ableitung + YAML | fertig (Unit-Tests) |
+| 1 | FRITZ!Box-Collector, Probe-Skript | fertig, an FRITZ!Box 7590 AX (FRITZ!OS 8.25, Mesh-Schema 8.7) geprüft |
+| 2 | Switch-Ableitung + YAML | fertig, mit echten Daten geprüft |
 | 3 | ZHA-Collector | offen |
 | 4 | Bluetooth-Collector, Zusammenführung über MAC | offen |
 | 5 | Lovelace-Karte | offen |

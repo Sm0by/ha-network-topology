@@ -68,6 +68,8 @@ def report_before(topo: Topology) -> None:
     wlan = defaultdict(list)
     for l in topo.links:
         if l.layer == LAN and l.source != "internet":
+            if topo.nodes[l.source].kind == "passive_switch":
+                continue  # devices behind a switch the box detected itself
             (lan[(l.source, l.port)] if l.port else no_port).append(l)
         elif l.layer == WLAN:
             wlan[(l.source, l.band)].append(l)

@@ -21,6 +21,7 @@ from .model import (
     CLIENT,
     INTERNET,
     LAN,
+    PASSIVE_SWITCH,
     REPEATER,
     ROUTER,
     WAN,
@@ -30,10 +31,13 @@ from .model import (
     Topology,
 )
 
-_ROLE_RANK = {"master": 2, "slave": 1}
+# Upstream rank: a link always points from the higher to the lower rank.
+_KIND_RANK = {ROUTER: 3, REPEATER: 2, PASSIVE_SWITCH: 1, CLIENT: 0}
 _BANDS = {"2G": "2.4", "5G": "5", "6G": "6", "60G": "60"}
 _LAN_PORT = re.compile(r"^LAN[:\s_-]*(\d+)$", re.IGNORECASE)
 _NULL_MACS = {"", "00:00:00:00:00:00"}
+# FRITZ!OS gives switches it detects itself and their ports placeholder MACs.
+_PLACEHOLDER_PREFIX = "fa:ce:"
 
 
 def norm_mac(mac: Any) -> str | None:
@@ -61,6 +65,29 @@ def wlan_band(iface_name: str | None) -> str | None:
     return None
 
 
+def _node_ipv4(raw: dict[str, Any]) -> str | None:
+    """First LAN IPv4 from the mesh node's own address list."""
+    for addr in raw.get("ip_addresses") or []:
+        if not isinstance(addr, dict) or addr.get("version") != "V4":
+            continue
+        attrs = addr.get("attributes") or []
+        value = str(addr.get("value") or "").split("/")[0]
+        if value and "LINK_LOCAL" not in attrs and "GUEST" not in attrs:
+            return value
+    return None
+
+
+def _kind(raw: dict[str, Any]) -> str:
+    role = raw.get("mesh_role")
+    if role == "master":
+        return ROUTER
+    if role == "slave":
+        return REPEATER
+    if raw.get("device_class") == "NETWORK_SWITCH":
+        return PASSIVE_SWITCH
+    return CLIENT
+
+
 def _int_or_none(value: Any, *, negative: bool = False) -> int | None:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
@@ -82,35 +109,54 @@ def parse_mesh(
 
     raw_nodes = [n for n in mesh.get("nodes", []) if isinstance(n, dict) and n.get("uid")]
     node_ids: dict[str, str] = {}
-    roles: dict[str, str] = {}
+    ranks: dict[str, int] = {}
     ifaces: dict[str, dict[str, Any]] = {}
+    mac_owner: dict[str, str] = {}  # every known MAC (device + interfaces) -> node id
 
     for raw in raw_nodes:
         mac = norm_mac(raw.get("device_mac_address"))
-        role = raw.get("mesh_role") or "unknown"
+        kind = _kind(raw)
         node_id = f"mac:{mac}" if mac else f"fritz:{raw['uid']}"
-        kind = ROUTER if role == "master" else REPEATER if role == "slave" else CLIENT
-        host = hosts_by_mac.get(mac or "", {})
+        # Interface MACs: repeaters appear in the host list under one of them.
+        own_macs = [mac] if mac else []
+        for iface in raw.get("node_interfaces", []) or []:
+            if isinstance(iface, dict) and iface.get("uid"):
+                ifaces[iface["uid"]] = iface
+                imac = norm_mac(iface.get("mac_address"))
+                if imac and not imac.startswith(_PLACEHOLDER_PREFIX) and imac not in own_macs:
+                    own_macs.append(imac)
+        host = next((hosts_by_mac[m] for m in own_macs if m in hosts_by_mac), {})
+        for m in own_macs:
+            mac_owner.setdefault(m, node_id)
+
+        name = (
+            raw.get("device_friendly_name")
+            or raw.get("device_name")
+            or (host.get("name") if kind != PASSIVE_SWITCH else None)
+            or (None if kind == PASSIVE_SWITCH else mac)
+            or "Switch"
+        )
         node = Node(
             id=node_id,
-            name=raw.get("device_name") or host.get("name") or mac or raw["uid"],
+            name=name,
             kind=kind,
-            mac=mac,
-            ip=host.get("ip") or None,
+            mac=mac if mac and not mac.startswith(_PLACEHOLDER_PREFIX) else None,
+            ip=host.get("ip") or _node_ipv4(raw),
             online=bool(host.get("status", True)) if kind == CLIENT else True,
             model=raw.get("device_model") or None,
             sources=["fritz"],
         )
-        if kind != CLIENT:
-            node.attrs["mesh_role"] = role
+        if kind in (ROUTER, REPEATER):
+            node.attrs["mesh_role"] = raw.get("mesh_role")
             if raw.get("device_firmware_version"):
                 node.attrs["firmware"] = raw["device_firmware_version"]
+        elif kind == PASSIVE_SWITCH:
+            node.layers = [LAN]
+            node.attrs["detected_by"] = "fritz"
+            node.model = None
         topo.add_node(node)
         node_ids[raw["uid"]] = node_id
-        roles[node_id] = role
-        for iface in raw.get("node_interfaces", []) or []:
-            if isinstance(iface, dict) and iface.get("uid"):
-                ifaces[iface["uid"]] = iface
+        ranks[node_id] = _KIND_RANK[kind]
 
     # Collect links, oriented upstream -> downstream.
     seen: set[str] = set()
@@ -122,7 +168,7 @@ def parse_mesh(
                 if uid in seen:
                     continue
                 seen.add(uid)
-                link = _build_link(raw_link, node_ids, roles, ifaces)
+                link = _build_link(raw_link, node_ids, ranks, ifaces)
                 if link is not None:
                     candidates.setdefault(link.target, []).append(link)
 
@@ -133,7 +179,8 @@ def parse_mesh(
         node = topo.nodes[child]
         if best.layer not in node.layers:
             node.layers.insert(0, best.layer)
-        if node.kind == CLIENT and node.mac not in hosts_by_mac:
+        host_known = any(owner == child for m, owner in mac_owner.items() if m in hosts_by_mac)
+        if node.kind == CLIENT and not host_known:
             node.online = best.connected
 
     # Internet uplink of the router.
@@ -147,7 +194,7 @@ def parse_mesh(
     # Known hosts that are missing from the mesh list (usually offline).
     for mac, host in hosts_by_mac.items():
         node_id = f"mac:{mac}"
-        if node_id in topo.nodes:
+        if mac in mac_owner or node_id in topo.nodes:
             continue
         iface_type = (host.get("interface_type") or "").lower()
         layer = WLAN if "802.11" in iface_type else LAN if "ethernet" in iface_type else None
@@ -175,7 +222,7 @@ def parse_mesh(
 def _build_link(
     raw: dict[str, Any],
     node_ids: dict[str, str],
-    roles: dict[str, str],
+    ranks: dict[str, int],
     ifaces: dict[str, dict[str, Any]],
 ) -> Link | None:
     a = node_ids.get(raw.get("node_1_uid", ""))
@@ -183,9 +230,7 @@ def _build_link(
     if not a or not b or a == b:
         return None
 
-    rank_a = _ROLE_RANK.get(roles.get(a, ""), 0)
-    rank_b = _ROLE_RANK.get(roles.get(b, ""), 0)
-    if rank_b > rank_a:
+    if ranks.get(b, 0) > ranks.get(a, 0):
         parent, child = b, a
         parent_iface = ifaces.get(raw.get("node_interface_2_uid", ""), {})
     else:
@@ -205,7 +250,10 @@ def _build_link(
     )
     if layer == WLAN:
         link.band = wlan_band(iface_name)
-        link.rssi = _int_or_none(raw.get("rx_rssi"), negative=True)
+        # Older FRITZ!OS: rx_rssi. FRITZ!OS 8: rx_rcpi in dBm, 255 = not available.
+        link.rssi = _int_or_none(raw.get("rx_rssi"), negative=True) or _int_or_none(
+            raw.get("rx_rcpi"), negative=True
+        )
         if ssid := parent_iface.get("ssid"):
             link.attrs["ssid"] = ssid
     else:

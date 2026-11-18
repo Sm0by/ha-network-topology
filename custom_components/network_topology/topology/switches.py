@@ -135,6 +135,42 @@ def _switch_node(
     )
 
 
+def _rename_node(topo: Topology, old: str, new: str) -> None:
+    if old == new or new in topo.nodes:
+        return
+    node = topo.nodes.pop(old)
+    node.id = new
+    topo.nodes[new] = node
+    for link in topo.links:
+        if link.source == old:
+            link.source = new
+        if link.target == old:
+            link.target = new
+
+
+def _adopt_detected(
+    topo: Topology, node_id: str, parent: str, port: str, cfg: SwitchConfig | None
+) -> None:
+    """Apply config / a readable name to a switch the FRITZ!Box reported itself."""
+    node = topo.nodes[node_id]
+    parent_name = topo.nodes[parent].name if parent in topo.nodes else parent
+    node.attrs["uplink"] = f"{parent_name}:{port}"
+    if cfg is None:
+        if node.name == "Switch":
+            node.name = f"Switch an {port}"
+        return
+    _rename_node(topo, node_id, cfg.node_id)
+    node = topo.nodes[cfg.node_id]
+    if cfg.name:
+        node.name = cfg.name
+    if cfg.location:
+        node.attrs["location"] = cfg.location
+    if cfg.ports:
+        node.attrs["ports"] = cfg.ports
+    if "config" not in node.sources:
+        node.sources.append("config")
+
+
 def apply_switches(
     topo: Topology, configs: list[SwitchConfig], min_devices: int = 2
 ) -> None:
@@ -171,6 +207,12 @@ def apply_switches(
         parent, port = key
         links = groups.get(key, [])
         cfg = by_port.get(key)
+
+        # The FRITZ!Box sometimes detects a switch itself: adopt it instead.
+        if len(links) == 1 and topo.nodes[links[0].target].kind == PASSIVE_SWITCH:
+            _adopt_detected(topo, links[0].target, parent, port, cfg)
+            continue
+
         inferred = len(links) >= min_devices
         if not inferred and cfg is None:
             continue

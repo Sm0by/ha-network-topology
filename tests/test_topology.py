@@ -29,6 +29,9 @@ TV = "mac:a8:23:fe:6c:12:90"
 CONSOLE = "mac:70:9e:29:44:b1:0c"
 PRINTER = "mac:00:1b:a9:77:01:02"
 PROXY = "mac:24:0a:c4:9b:11:02"
+FRITZ_SW = "mac:fa:ce:14:00:00:01"
+TOWER = "mac:30:5a:3a:00:00:a1"
+SERVER = "mac:50:3e:aa:00:00:a2"
 
 
 def build():
@@ -90,6 +93,26 @@ class ParseMeshTests(unittest.TestCase):
         self.assertFalse(old.online)
         self.assertIn(old.id, topo.to_dict()["unlinked"])
 
+    def test_switch_detected_by_box(self):
+        topo = build()
+        sw = topo.nodes[FRITZ_SW]
+        self.assertEqual(sw.kind, PASSIVE_SWITCH)
+        self.assertIsNone(sw.mac, "placeholder MAC is not a real device MAC")
+        self.assertEqual(topo.parent_link(FRITZ_SW).port, "LAN4")
+        # Links list the client as node_1; the switch must still be upstream.
+        self.assertEqual(parent(topo, TOWER), FRITZ_SW)
+        self.assertEqual(parent(topo, SERVER), FRITZ_SW)
+        self.assertNotIn(TOWER, topo.to_dict()["unlinked"])
+
+    def test_rcpi_used_as_signal(self):
+        topo = build()
+        self.assertEqual(topo.parent_link("mac:5a:11:22:33:44:56").rssi, -66)
+
+    def test_repeater_host_entry_under_interface_mac(self):
+        topo = build()
+        self.assertEqual(topo.nodes[REP].ip, "192.168.178.25")
+        self.assertNotIn("mac:ca:0e:14:00:00:03", topo.nodes)
+
     def test_warning_without_ports(self):
         data = copy.deepcopy(SAMPLE)
         for node in data["mesh"]["nodes"]:
@@ -105,7 +128,7 @@ class SwitchTests(unittest.TestCase):
         topo = build()
         apply_switches(topo, [])
         switches = {n.id: n for n in topo.nodes.values() if n.kind == PASSIVE_SWITCH}
-        self.assertEqual(len(switches), 2, "LAN1 (3 devices) and LAN2 (2 devices)")
+        self.assertEqual(len(switches), 3, "inferred at LAN1 and LAN2, detected by the box at LAN4")
         sw1 = parent(topo, PC)
         self.assertIn(sw1, switches)
         self.assertEqual(parent(topo, NAS), sw1)
@@ -134,7 +157,25 @@ class SwitchTests(unittest.TestCase):
         self.assertEqual(sw.attrs["location"], "Arbeitszimmer")
         self.assertEqual(parent(topo, PC), "switch:sw_buero")
         self.assertEqual(parent(topo, CONSOLE), "switch:sw_wohnzimmer")
-        self.assertEqual(sum(n.kind == PASSIVE_SWITCH for n in topo.nodes.values()), 2)
+        self.assertEqual(sum(n.kind == PASSIVE_SWITCH for n in topo.nodes.values()), 3)
+
+    def test_detected_switch_named_by_port_without_config(self):
+        topo = build()
+        apply_switches(topo, [])
+        self.assertEqual(topo.nodes[FRITZ_SW].name, "Switch an LAN4")
+
+    def test_config_adopts_detected_switch(self):
+        topo = build()
+        configs, _ = load_config(
+            {"passive_switches": [{"id": "sw_schlafzimmer", "name": "Switch Schlafzimmer", "uplink": "fritzbox:LAN4"}]}
+        )
+        apply_switches(topo, configs)
+        self.assertNotIn(FRITZ_SW, topo.nodes)
+        sw = topo.nodes["switch:sw_schlafzimmer"]
+        self.assertEqual((sw.name, sw.sources), ("Switch Schlafzimmer", ["fritz", "config"]))
+        self.assertEqual(parent(topo, TOWER), "switch:sw_schlafzimmer")
+        self.assertEqual(parent(topo, "switch:sw_schlafzimmer"), BOX)
+        self.assertEqual(sum(n.kind == PASSIVE_SWITCH for n in topo.nodes.values()), 3, "no extra switch inserted")
 
     def test_configured_switch_with_single_device(self):
         topo = build()

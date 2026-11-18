@@ -20,19 +20,27 @@
           {"uid": "ni-1-lan3", "name": "LAN:3", "type": "LAN", "node_links": [
             {"uid": "nl-printer", "type": "LAN", "state": "CONNECTED", "node_1_uid": "n-printer", "node_2_uid": "n-1", "node_interface_1_uid": "ni-printer", "node_interface_2_uid": "ni-1-lan3"}
           ]},
+          {"uid": "ni-1-lan4", "name": "LAN:4", "type": "LAN", "lldp_active": true, "node_links": [
+            {"uid": "nl-sw", "type": "LAN", "state": "CONNECTED", "learned_via_lldp": true, "node_1_uid": "n-1", "node_2_uid": "n-sw", "node_interface_1_uid": "ni-1-lan4", "node_interface_2_uid": "ni-sw-up"}
+          ]},
           {"uid": "ni-1-5g", "name": "AP:5G:0", "type": "WLAN", "ssid": "Heimnetz", "node_links": [
             {"uid": "nl-rep", "type": "WLAN", "state": "CONNECTED", "node_1_uid": "n-1", "node_2_uid": "n-rep", "node_interface_1_uid": "ni-1-5g", "node_interface_2_uid": "ni-rep-up", "rx_rssi": -55},
             {"uid": "nl-phone", "type": "WLAN", "state": "CONNECTED", "node_1_uid": "n-1", "node_2_uid": "n-phone", "node_interface_1_uid": "ni-1-5g", "node_interface_2_uid": "ni-phone", "rx_rssi": -49}
           ]},
           {"uid": "ni-1-2g", "name": "AP:2G:0", "type": "WLAN", "ssid": "Heimnetz", "node_links": [
-            {"uid": "nl-tablet", "type": "WLAN", "state": "CONNECTED", "node_1_uid": "n-1", "node_2_uid": "n-tablet", "node_interface_1_uid": "ni-1-2g", "node_interface_2_uid": "ni-tablet", "rx_rssi": -66}
+            {"uid": "nl-tablet", "type": "WLAN", "state": "CONNECTED", "node_1_uid": "n-1", "node_2_uid": "n-tablet", "node_interface_1_uid": "ni-1-2g", "node_interface_2_uid": "ni-tablet", "rx_rcpi": -66, "tx_rcpi": 255}
           ]}
         ]
       },
       {
         "uid": "n-rep", "device_name": "FRITZ!Repeater", "device_mac_address": "C8:0E:14:00:00:02",
         "is_meshed": true, "mesh_role": "slave",
+        "ip_addresses": [
+          {"version": "V4", "value": "169.254.1.1/16", "attributes": ["LINK_LOCAL", "MANAGEMENT"]},
+          {"version": "V4", "value": "192.168.178.25/24", "attributes": ["NEIGHBOUR_LIST", "DHCP"]}
+        ],
         "node_interfaces": [
+          {"uid": "ni-rep-bridge", "name": "LANBridge", "type": "LAN", "mac_address": "CA:0E:14:00:00:03", "node_links": []},
           {"uid": "ni-rep-up", "name": "UPLINK:5G:0", "type": "WLAN", "node_links": [
             {"uid": "nl-rep", "type": "WLAN", "state": "CONNECTED", "node_1_uid": "n-1", "node_2_uid": "n-rep", "node_interface_1_uid": "ni-1-5g", "node_interface_2_uid": "ni-rep-up", "rx_rssi": -55}
           ]},
@@ -53,6 +61,17 @@
       {"uid": "n-phone", "device_name": "Smartphone", "device_mac_address": "5A:11:22:33:44:55", "mesh_role": "unknown", "node_interfaces": [{"uid": "ni-phone", "type": "WLAN", "node_links": []}]},
       {"uid": "n-tablet", "device_name": "Tablet", "device_mac_address": "5A:11:22:33:44:56", "mesh_role": "unknown", "node_interfaces": [{"uid": "ni-tablet", "type": "WLAN", "node_links": []}]},
       {"uid": "n-laptop", "device_name": "Laptop", "device_mac_address": "5A:11:22:33:44:57", "mesh_role": "unknown", "node_interfaces": [{"uid": "ni-laptop", "type": "WLAN", "node_links": []}]},
+      {"uid": "n-sw", "device_name": "", "device_class": "NETWORK_SWITCH", "device_model": "Switch", "device_mac_address": "FA:CE:14:00:00:01", "is_meshed": false, "mesh_role": "unknown", "node_interfaces": [
+        {"uid": "ni-sw-up", "name": "", "type": "LAN", "mac_address": "FA:CE:14:00:00:01", "node_links": []},
+        {"uid": "ni-sw-1", "name": "", "type": "LAN", "mac_address": "FA:CE:00:00:00:A1", "node_links": [
+          {"uid": "nl-tower", "type": "LAN", "state": "CONNECTED", "node_1_uid": "n-tower", "node_2_uid": "n-sw", "node_interface_1_uid": "ni-tower", "node_interface_2_uid": "ni-sw-1"}
+        ]},
+        {"uid": "ni-sw-2", "name": "", "type": "LAN", "mac_address": "FA:CE:00:00:00:A2", "node_links": [
+          {"uid": "nl-server", "type": "LAN", "state": "CONNECTED", "node_1_uid": "n-server", "node_2_uid": "n-sw", "node_interface_1_uid": "ni-server", "node_interface_2_uid": "ni-sw-2"}
+        ]}
+      ]},
+      {"uid": "n-tower", "device_name": "Tower-PC", "device_mac_address": "30:5A:3A:00:00:A1", "mesh_role": "unknown", "node_interfaces": [{"uid": "ni-tower", "type": "LAN", "node_links": []}]},
+      {"uid": "n-server", "device_name": "Server-PC", "device_mac_address": "50:3E:AA:00:00:A2", "mesh_role": "unknown", "node_interfaces": [{"uid": "ni-server", "type": "LAN", "node_links": []}]},
       {"uid": "n-proxy", "device_name": "bt-proxy-kueche", "device_mac_address": "24:0A:C4:9B:11:02", "mesh_role": "unknown", "node_interfaces": [{"uid": "ni-proxy", "type": "WLAN", "node_links": []}]}
     ]
   },
@@ -60,6 +79,8 @@
     {"ip": "192.168.178.20", "name": "homeassistant", "mac": "D8:3A:DD:41:7C:02", "status": true, "interface_type": "Ethernet"},
     {"ip": "192.168.178.31", "name": "Desktop-PC", "mac": "3C:22:FB:10:4E:A1", "status": true, "interface_type": "Ethernet"},
     {"ip": "192.168.178.53", "name": "Spielkonsole", "mac": "70:9E:29:44:B1:0C", "status": false, "interface_type": "Ethernet"},
+    {"ip": "", "name": "Switch", "mac": "FA:CE:14:00:00:01", "status": true, "interface_type": "Ethernet"},
+    {"ip": "192.168.178.25", "name": "fritz.repeater", "mac": "CA:0E:14:00:00:03", "status": true, "interface_type": "Ethernet"},
     {"ip": "192.168.178.80", "name": "Alter-Laptop", "mac": "5A:11:22:33:44:99", "status": false, "interface_type": "802.11"}
   ]
 }
