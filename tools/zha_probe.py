@@ -59,7 +59,7 @@ def main() -> None:
     counts = {k: sum(n.kind == k for n in zb) for k in ROLE}
     print(f"{len(zb)} Geräte: {counts['zigbee_router']} Router, {counts['zigbee_end_device']} End Devices\n")
 
-    weak, unknown, offline = [], [], []
+    weak, unknown, offline, conflicts = [], [], [], []
 
     def walk(node_id: str, depth: int) -> None:
         for link in sorted(children.get(node_id, []), key=lambda l: (topo.nodes[l.target].kind != "zigbee_router", topo.nodes[l.target].name.lower())):
@@ -71,6 +71,9 @@ def main() -> None:
             if link.attrs.get("parent") == "unknown":
                 flags.append("Parent unbekannt")
                 unknown.append(n.name)
+            if conflict := link.attrs.get("route_conflict"):
+                flags.append(f"Koordinator routet über {topo.nodes[conflict].name}")
+                conflicts.append(n.name)
             if not n.online:
                 flags.append("offline")
                 offline.append(n.name)
@@ -81,7 +84,10 @@ def main() -> None:
 
     walk(coord.id, 0)
     print(f"\nWeitere Mesh-Verbindungen zwischen Routern (nicht im Baum): {len(topo.mesh)}")
-    print(f"Schwaches Signal (< {args.weak_lqi}): {len(weak)} · Parent unbekannt: {len(unknown)} · offline: {len(offline)}")
+    print(
+        f"Schwaches Signal (< {args.weak_lqi}): {len(weak)} · Parent unbekannt: {len(unknown)} · "
+        f"offline: {len(offline)} · Widerspruch Nachbartabelle/Route: {len(conflicts)}"
+    )
     for w in topo.warnings:
         print(f"  ! {w}")
 

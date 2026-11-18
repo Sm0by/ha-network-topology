@@ -14,9 +14,13 @@ Zigbee is a mesh, the card draws a tree. Parent choice:
 
 * End device: the router/coordinator that lists it as ``Child`` (best LQI),
   else the end device's own ``Parent`` entry.
-* Router: next hop of its active route to the coordinator (0x0000), else
-  the predecessor on the best path to the coordinator over neighbor links
-  (cost per hop grows as LQI drops). Loops from stale routes are repaired.
+* Router: next hop of its own active route to the coordinator (0x0000);
+  else the coordinator's routing table (direct, or the first hop it sends
+  through, with the rest of the path filled in by best path); else the best
+  path over neighbor links with Zigbee-PRO-style link costs (1..7 by LQI).
+  Loops from stale routes are repaired.
+* End devices listed as Child by several routers: the coordinator's route
+  decides.
 * Nothing known: coordinator, marked ``parent: "unknown"``.
 
 All router-router neighbor links that are not tree links go to ``topo.mesh``.
@@ -176,12 +180,26 @@ def add_zigbee(
             graph[b][a] = lqi
 
     best_pred = _best_paths(graph, coord)
+    # The coordinator's routing table: destination -> first hop it sends through.
+    first_hop = _routes_by_dest(devs[coord], by_nwk)
+    via_cache: dict[str, dict[str, str]] = {}
+
+    def via(hop: str, target: str) -> str:
+        """Parent of target on the best path that starts at hop (not via coordinator)."""
+        if hop not in via_cache:
+            via_cache[hop] = _best_paths(graph, hop, exclude={coord})
+        return via_cache[hop].get(target, hop)
 
     parent: dict[str, tuple[str, str]] = {}  # child -> (parent, how)
-    for ieee in backbone - {coord}:
-        hop = _route_next_hop(devs[ieee], by_nwk)
-        if hop and hop != ieee and hop in backbone:
-            parent[ieee] = (hop, "route")
+    for ieee in sorted(backbone - {coord}):
+        own_hop = _route_next_hop(devs[ieee], by_nwk)
+        first = first_hop.get(ieee)
+        if own_hop and own_hop != ieee and own_hop in backbone:
+            parent[ieee] = (own_hop, "route")
+        elif first == ieee:
+            parent[ieee] = (coord, "route")
+        elif first in backbone and first != coord:
+            parent[ieee] = (via(first, ieee), "route")
         elif ieee in best_pred:
             parent[ieee] = (best_pred[ieee], "neighbors")
         else:
@@ -204,30 +222,61 @@ def add_zigbee(
 
     # --- end devices --------------------------------------------------------
     for ieee in (i for i, k in kinds.items() if k == ZIGBEE_END_DEVICE):
+        first = first_hop.get(ieee)
+        if first == ieee:
+            parent[ieee] = (coord, "route")
+            continue
         listed_by = [
             (lqi if lqi is not None else -1, a)
             for (a, b), (lqi, rel) in reported.items()
             if b == ieee and rel == "Child" and a in backbone
         ]
         if listed_by:
-            parent[ieee] = (max(listed_by)[1], "neighbors")
+            # Several routers may still list it (stale tables): prefer the route's hop.
+            chosen = next((a for _, a in listed_by if a == first), max(listed_by)[1])
+            parent[ieee] = (chosen, "neighbors")
             continue
         own = [
             b for (a, b), (_, rel) in reported.items() if a == ieee and rel == "Parent" and b in backbone
         ]
-        parent[ieee] = (own[0], "neighbors") if own else (coord, "unknown")
+        if own:
+            parent[ieee] = (own[0], "neighbors")
+        elif first in backbone:
+            parent[ieee] = (first, "route")
+        else:
+            parent[ieee] = (coord, "unknown")
 
     # --- links ----------------------------------------------------------------
     if host_id and host_id in topo.nodes:
         topo.links.append(
             Link(source=host_id, target=node_id(coord), layer=USB, attrs={"radio": radio_link})
         )
+    def ancestors(ieee: str) -> set[str]:
+        """All routers on the tree path from the coordinator to ieee."""
+        out: set[str] = set()
+        cur = ieee
+        while cur in parent and parent[cur][0] not in out:
+            cur = parent[cur][0]
+            out.add(cur)
+        return out
+
     tree: set[frozenset[str]] = set()
     for child, (par, how) in sorted(parent.items()):
         tree.add(frozenset((child, par)))
         lqi = link_lqi(child, par)
         if lqi is None:
             lqi = _int(devs[child].get("lqi"))
+        attrs: dict[str, Any] = {"parent": how}
+        # Neighbor tables and the coordinator's route disagree: show it, don't guess.
+        first = first_hop.get(child)
+        if (
+            kinds[child] == ZIGBEE_END_DEVICE
+            and how == "neighbors"
+            and first in backbone
+            and first not in (child, coord)
+            and first not in ancestors(child)
+        ):
+            attrs["route_conflict"] = node_id(first)
         topo.links.append(
             Link(
                 source=node_id(par),
@@ -235,7 +284,7 @@ def add_zigbee(
                 layer=ZIGBEE,
                 lqi=lqi,
                 connected=bool(devs[child].get("available", True)),
-                attrs={"parent": how},
+                attrs=attrs,
             )
         )
     for a in sorted(graph):
@@ -254,8 +303,33 @@ def _route_next_hop(dev: dict[str, Any], by_nwk: dict[int, str]) -> str | None:
     return None
 
 
-def _best_paths(graph: dict[str, dict[str, int | None]], root: str) -> dict[str, str]:
-    """Dijkstra from the coordinator. Hop cost 1 at LQI 255, up to 6 at LQI 0."""
+def _routes_by_dest(dev: dict[str, Any], by_nwk: dict[int, str]) -> dict[str, str]:
+    """Active routes of one device: destination ieee -> next hop ieee."""
+    out: dict[str, str] = {}
+    for route in dev.get("routes") or []:
+        if str(route.get("route_status", "")).lower() != "active":
+            continue
+        dest = by_nwk.get(_nwk(route.get("dest_nwk")) if route.get("dest_nwk") is not None else -1)
+        hop_nwk = _nwk(route.get("next_hop"))
+        hop = by_nwk.get(hop_nwk) if hop_nwk is not None else None
+        if dest and hop:
+            out[dest] = hop
+    return out
+
+
+def link_cost(lqi: int | None) -> int:
+    """Zigbee PRO style link cost: min(7, round(1/p^4)) with p = LQI/255."""
+    p = (lqi if lqi is not None else 100) / 255
+    if p <= 0:
+        return 7
+    return max(1, min(7, round(1 / p**4)))
+
+
+def _best_paths(
+    graph: dict[str, dict[str, int | None]], root: str, exclude: set[str] | None = None
+) -> dict[str, str]:
+    """Dijkstra from root over the router graph; returns predecessor per node."""
+    exclude = exclude or set()
     dist = {root: 0.0}
     pred: dict[str, str] = {}
     heap = [(0.0, root)]
@@ -263,9 +337,10 @@ def _best_paths(graph: dict[str, dict[str, int | None]], root: str) -> dict[str,
         d, node = heapq.heappop(heap)
         if d > dist.get(node, float("inf")):
             continue
-        for nxt, lqi in graph.get(node, {}).items():
-            cost = 1 + (255 - (lqi if lqi is not None else 100)) / 51
-            nd = d + cost
+        for nxt, lqi in sorted(graph.get(node, {}).items()):
+            if nxt in exclude:
+                continue
+            nd = d + link_cost(lqi)
             if nd < dist.get(nxt, float("inf")):
                 dist[nxt] = nd
                 pred[nxt] = node

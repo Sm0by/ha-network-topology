@@ -81,6 +81,46 @@ class ZigbeeTreeTests(unittest.TestCase):
         self.assertEqual(pairs, {frozenset((C, R2)), frozenset((R2, R3))})
         self.assertNotIn("aa:aa", json.dumps(topo.to_dict()), "devices unknown to ZHA are ignored")
 
+    def test_coordinator_routes_decide(self):
+        devices = copy.deepcopy(ZHA)
+        coord = devices[0]
+        coord["routes"] = [
+            {"dest_nwk": "0x3333", "next_hop": "0x2222", "route_status": "Active"},  # R3 via R2
+            {"dest_nwk": "0xE444", "next_hop": "0xE444", "route_status": "Active"},  # E4 direct
+            {"dest_nwk": "0xE111", "next_hop": "0x2222", "route_status": "Active"},  # E1 via R2
+            {"dest_nwk": "0x9999", "next_hop": "0x9999", "route_status": "Active"},  # unknown device
+        ]
+        # E1 is now listed as Child by R1 and R2: the route through R2 decides.
+        devices[2]["neighbors"].append(
+            {"ieee": "00:15:8d:00:00:00:00:e1", "nwk": "0xE111", "relationship": "Child", "device_type": "EndDevice", "lqi": "90"}
+        )
+        topo = build(devices)
+        self.assertEqual(up(topo, R3)[:2], (R2, "route"))
+        self.assertEqual(up(topo, E4)[:2], (C, "route"))
+        self.assertEqual(up(topo, E1)[0], R2)
+
+    def test_route_conflict_is_flagged(self):
+        devices = copy.deepcopy(ZHA)
+        # E1 is listed as Child by R1, but the coordinator routes to it through R3.
+        devices[0]["routes"] = [{"dest_nwk": "0xE111", "next_hop": "0x3333", "route_status": "Active"}]
+        topo = build(devices)
+        link = topo.parent_link(E1)
+        self.assertEqual((link.source, link.attrs["route_conflict"]), (R1, R3))
+        self.assertNotIn("route_conflict", topo.parent_link(E2).attrs)
+
+    def test_first_hop_path_is_completed(self):
+        devices = copy.deepcopy(ZHA)
+        # R3 reached through R1: path R1 -> R2 -> R3, so R3's parent is R2.
+        devices[0]["routes"] = [{"dest_nwk": "0x3333", "next_hop": "0x1111", "route_status": "Active"}]
+        devices[3]["routes"] = []
+        topo = build(devices)
+        self.assertEqual(up(topo, R3)[:2], (R2, "route"))
+
+    def test_link_cost(self):
+        from topology.zha_parse import link_cost
+
+        self.assertEqual([link_cost(v) for v in (255, 230, 180, 120, 48, 0)], [1, 2, 4, 7, 7, 7])
+
     def test_route_loop_is_repaired(self):
         devices = copy.deepcopy(ZHA)
         for dev in devices:

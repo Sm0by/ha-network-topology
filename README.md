@@ -15,7 +15,7 @@ Die Daten stehen über die WebSocket-API bereit und werden später von der Lovel
 |---|---|---|
 | 1 | FRITZ!Box-Collector, Probe-Skript | fertig, an FRITZ!Box 7590 AX (FRITZ!OS 8.25, Mesh-Schema 8.7) geprüft |
 | 2 | Switch-Ableitung + YAML | fertig, mit echten Daten geprüft |
-| 3 | ZHA-Collector, Zigbee-Baum | fertig (Unit-Tests), wartet auf Test mit echten ZHA-Daten |
+| 3 | ZHA-Collector, Zigbee-Baum | fertig, mit echten ZHA-Daten geprüft (46 Geräte) |
 | 4 | Bluetooth-Collector, Zusammenführung über MAC | offen |
 | 5 | Lovelace-Karte | offen |
 | 6 | Sensoren, HACS-Paket | offen |
@@ -31,7 +31,11 @@ Das Skript fragt das Passwort ab, zeigt Mesh-Geräte, LAN-Ports, WLAN-Clients un
 
 ## Zigbee-Baum prüfen
 
-ZHA rechnet aus seinen Nachbar- und Routing-Tabellen einen Baum: End Devices hängen an dem Router, der sie als Kind führt. Router hängen an der nächsten Station ihrer aktiven Route zum Koordinator, ohne Route am besten Pfad nach LQI. Zum Prüfen die ZHA-Daten im Browser exportieren (in HA angemeldet, Konsole mit F12):
+Die Integration rechnet aus den Nachbar- und Routing-Tabellen von ZHA einen Baum:
+
+- **Router** hängen dort, wohin die Routing-Tabelle des Koordinators zeigt: direkt am Koordinator oder hinter dem ersten Hop. Den Rest des Weges ergänzt der beste Pfad mit Zigbee-Linkkosten (1–7 je nach LQI).
+- **End Devices** hängen an dem Router, der sie als Kind führt.
+- **Widersprüche:** Liegt der erste Hop des Koordinators nicht auf dem Weg zu diesem Router, bekommt die Verbindung `route_conflict`. Eine der beiden Tabellen ist dann veraltet. Zum Prüfen die ZHA-Daten im Browser exportieren (in HA angemeldet, Konsole mit F12):
 
 ```js
 copy(JSON.stringify(await document.querySelector("home-assistant").hass.callWS({type: "zha/devices"})))
