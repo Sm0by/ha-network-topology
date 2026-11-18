@@ -4,7 +4,8 @@
  *
  *   type: custom:network-topology-card
  *   title: Netzwerk            # optional
- *   height: 600                # px
+ *   height: 600                # px, or "full" to fill the window below the card's top
+ *   layout: horizontal         # or "vertical" (top-down, better on wide screens)
  *   layers: [lan, wlan, zigbee, bluetooth]
  *   show_mesh: false           # extra radio links outside the tree
  *   hide_offline: false
@@ -15,12 +16,16 @@
  * No build step, no external libraries.
  */
 
-const CARD_VERSION = "0.1.0";
+const CARD_VERSION = "0.2.0";
 const NS = "http://www.w3.org/2000/svg";
 const NODE_W = 184;
 const NODE_H = 46;
-const COL = 244;
-const ROW = 56;
+const COL = 244; // horizontal: distance between levels
+const ROW = 56; // horizontal: distance between rows
+const SLOT = NODE_W + 76; // vertical: width of one column
+const LEVEL = 116; // vertical: distance between levels
+const STACK_ROW = 54; // vertical: distance in a stacked leaf list
+const STACK_MAX = 10; // vertical: leaves per stacked column
 const ALL_LAYERS = ["lan", "wlan", "zigbee", "bluetooth"];
 const LINK_FILTER = { wan: "lan", lan: "lan", wlan: "wlan", zigbee: "zigbee", usb: "zigbee", bluetooth: "bluetooth" };
 const INFRA = new Set(["internet", "router", "repeater", "passive_switch", "home_assistant", "zigbee_coordinator", "bluetooth_scanner"]);
@@ -30,7 +35,7 @@ const STRINGS = {
   de: {
     title: "Netzwerk", layers: { lan: "LAN", wlan: "WLAN", zigbee: "Zigbee", bluetooth: "Bluetooth" },
     mesh: "Mesh-Verbindungen", hideOffline: "Offline ausblenden", search: "Gerät suchen …",
-    fit: "Alles zeigen", zoomIn: "Vergrößern", zoomOut: "Verkleinern",
+    fit: "Alles zeigen", zoomIn: "Vergrößern", zoomOut: "Verkleinern", direction: "Ausrichtung wechseln",
     online: "online", offline: "offline", warnings: "Warnungen", rescan: "Zigbee-Nachscan läuft",
     updated: "aktualisiert", loading: "Lade Topologie …", notLoaded: "Die Integration Network Topology ist nicht eingerichtet oder liefert keine Daten.",
     noSelection: "Kein Gerät gewählt", noSelectionHint: "Klicke auf ein Gerät, um Verbindungsweg, Signalwerte und Datenquelle zu sehen.",
@@ -59,7 +64,7 @@ const STRINGS = {
   en: {
     title: "Network", layers: { lan: "LAN", wlan: "Wi-Fi", zigbee: "Zigbee", bluetooth: "Bluetooth" },
     mesh: "Mesh links", hideOffline: "Hide offline", search: "Find device …",
-    fit: "Show all", zoomIn: "Zoom in", zoomOut: "Zoom out",
+    fit: "Show all", zoomIn: "Zoom in", zoomOut: "Zoom out", direction: "Switch direction",
     online: "online", offline: "offline", warnings: "warnings", rescan: "Zigbee rescan running",
     updated: "updated", loading: "Loading topology …", notLoaded: "The Network Topology integration is not set up or returns no data.",
     noSelection: "No device selected", noSelectionHint: "Click a device to see its path, signal values and data source.",
@@ -208,9 +213,29 @@ class NetworkTopologyCard extends HTMLElement {
     this._collapsed = new Set(this._config.collapsed);
     this._showMesh = !!this._config.show_mesh;
     this._hideOffline = !!this._config.hide_offline;
+    this._vertical = this._config.layout === "vertical";
+    this._fullHeight = this._config.height === "full";
     if (this._root) {
-      this._root.host.style.setProperty("--nt-height", `${this._config.height}px`);
+      this._applyHeight();
+      this._fitted = false;
       this._update();
+    }
+  }
+
+  /** Fixed px height, or "full": fill the window below the card's top edge. */
+  _applyHeight() {
+    if (!this._canvas) return;
+    let h = Number(this._config.height) || 600;
+    if (this._fullHeight) {
+      const top = this._canvas.getBoundingClientRect().top;
+      const below = (this._extra && !this._extra.hidden ? this._extra.offsetHeight : 0) + 16;
+      // Before the first layout top is 0; fall back to a typical header height.
+      h = Math.max(320, window.innerHeight - (top > 0 ? top : 150) - below);
+    }
+    if (h !== this._height) {
+      this._height = h;
+      this._canvas.style.height = `${h}px`;
+      this._root.host.style.setProperty("--nt-height", `${h}px`);
     }
   }
 
@@ -226,15 +251,24 @@ class NetworkTopologyCard extends HTMLElement {
 
   connectedCallback() {
     this._subscribe();
+    if (!this._onResize) this._onResize = () => this._applyHeight();
+    window.addEventListener("resize", this._onResize);
+    requestAnimationFrame(() => this._applyHeight());
   }
 
   disconnectedCallback() {
     if (this._unsub) this._unsub.then((u) => u && u()).catch(() => {});
     this._unsub = null;
+    if (this._onResize) window.removeEventListener("resize", this._onResize);
   }
 
   getCardSize() {
-    return Math.ceil((this._config?.height || 600) / 50) + 3;
+    return Math.ceil((Number(this._config?.height) || 800) / 50) + 3;
+  }
+
+  // Sections view: a full-height card spans the whole row.
+  getGridOptions() {
+    return { columns: "full", rows: this._fullHeight ? "auto" : Math.ceil((Number(this._config?.height) || 600) / 56) + 3 };
   }
 
   _subscribe() {
@@ -258,7 +292,6 @@ class NetworkTopologyCard extends HTMLElement {
   // ---------------------------------------------------------------- DOM
   _build() {
     this._root = this.attachShadow({ mode: "open" });
-    this._root.host.style.setProperty("--nt-height", `${this._config.height}px`);
     htmlEl("style", { text: STYLE }, this._root);
     const card = htmlEl("ha-card", {}, this._root);
     const t = this._t;
@@ -297,13 +330,22 @@ class NetworkTopologyCard extends HTMLElement {
     const search = htmlEl("input", { type: "search", placeholder: t.search, "aria-label": t.search }, bar);
     search.addEventListener("keydown", (e) => { if (e.key === "Enter") this._search(search.value); });
     search.addEventListener("search", () => this._search(search.value));
+    const dirBtn = htmlEl("button", { cls: "zoom", title: t.direction, "aria-label": t.direction }, bar);
+    const dirIcon = () => { dirBtn.textContent = this._vertical ? "⇄" : "⇅"; };
+    dirIcon();
+    dirBtn.addEventListener("click", () => {
+      this._vertical = !this._vertical;
+      dirIcon();
+      this._update();
+      this._fit(true);
+    });
     for (const [label, title, fn] of [["−", t.zoomOut, () => this._zoomBy(1 / 1.25)], ["+", t.zoomIn, () => this._zoomBy(1.25)], ["⤢", t.fit, () => this._fit()]]) {
       const zb = htmlEl("button", { cls: "zoom", title, "aria-label": title, text: label }, bar);
       zb.addEventListener("click", fn);
     }
 
     const body = htmlEl("div", { cls: "body" }, card);
-    this._canvas = htmlEl("div", { cls: "canvas", style: `height:${this._config.height}px` }, body);
+    this._canvas = htmlEl("div", { cls: "canvas" }, body);
     this._svg = svgEl("svg", { role: "img" }, this._canvas);
     this._vp = svgEl("g", {}, this._svg);
     this._gMesh = svgEl("g", {}, this._vp);
@@ -315,6 +357,7 @@ class NetworkTopologyCard extends HTMLElement {
     this._extra = htmlEl("details", { cls: "extra" }, card);
 
     this._view = { k: 1, x: 20, y: 20 };
+    this._applyHeight();
     this._initPanZoom();
   }
 
@@ -379,7 +422,9 @@ class NetworkTopologyCard extends HTMLElement {
       // Large network: start readable at the root instead of a tiny overview.
       const k = 0.55;
       const root = this._pos.get(this._rootId) || { x: b.x1, y: (b.y1 + b.y2) / 2 };
-      this._view = { k, x: 20 - root.x * k, y: r.height / 2 - root.y * k };
+      this._view = this._vertical
+        ? { k, x: r.width / 2 - (root.x + NODE_W / 2) * k, y: 20 - (root.y - NODE_H / 2) * k }
+        : { k, x: 20 - root.x * k, y: r.height / 2 - root.y * k };
     } else {
       const k = Math.min(1.2, Math.max(0.1, fitK));
       this._view = { k, x: (r.width - w * k) / 2 - (b.x1 - 20) * k, y: (r.height - h * k) / 2 - (b.y1 - 20) * k };
@@ -459,23 +504,70 @@ class NetworkTopologyCard extends HTMLElement {
   }
 
   _layout(trees) {
+    // pos: x = left edge, y = vertical center, entry = where the edge enters the node.
+    const pos = this._vertical ? this._layoutVertical(trees) : this._layoutHorizontal(trees);
+    this._finishLayout(pos);
+  }
+
+  _layoutHorizontal(trees) {
     const pos = new Map();
     let next = 0;
     const place = (t, depth) => {
-      t.x = depth * COL;
+      let y;
       if (!t.kids.length) {
-        t.y = next * ROW;
+        y = next * ROW;
         next += 1;
       } else {
         t.kids.forEach((k) => place(k, depth + 1));
-        t.y = (t.kids[0].y + t.kids[t.kids.length - 1].y) / 2;
+        y = (pos.get(t.kids[0].id).y + pos.get(t.kids[t.kids.length - 1].id).y) / 2;
       }
-      pos.set(t.id, { x: t.x, y: t.y });
+      pos.set(t.id, { x: depth * COL, y, entry: "left" });
     };
     for (const t of trees) {
       place(t, 0);
       next += 0.6;
     }
+    return pos;
+  }
+
+  _layoutVertical(trees) {
+    // Top-down. Leaf children (3 or more) are stacked as a list below their
+    // parent, so wide fan-outs (Wi-Fi clients, Zigbee end devices) stay narrow.
+    const pos = new Map();
+    let slot = 0;
+    const place = (t, depth) => {
+      const top = depth * LEVEL;
+      const leaves = t.kids.filter((k) => !k.kids.length);
+      const stack = leaves.length >= 3;
+      const centers = [];
+      if (stack) {
+        for (let i = 0; i < leaves.length; i += STACK_MAX) {
+          leaves.slice(i, i + STACK_MAX).forEach((leaf, j) => {
+            pos.set(leaf.id, { x: slot * SLOT + 60, y: top + LEVEL + j * STACK_ROW, entry: "left" });
+          });
+          centers.push(slot);
+          slot += 1;
+        }
+      }
+      for (const k of stack ? t.kids.filter((k) => k.kids.length) : t.kids) centers.push(place(k, depth + 1));
+      let center;
+      if (!centers.length) {
+        center = slot;
+        slot += 1;
+      } else {
+        center = (Math.min(...centers) + Math.max(...centers)) / 2;
+      }
+      pos.set(t.id, { x: center * SLOT + (SLOT - NODE_W) / 2, y: top, entry: "top" });
+      return center;
+    };
+    for (const t of trees) {
+      place(t, 0);
+      slot += 0.4;
+    }
+    return pos;
+  }
+
+  _finishLayout(pos) {
     let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
     for (const p of pos.values()) {
       x1 = Math.min(x1, p.x); x2 = Math.max(x2, p.x + NODE_W);
@@ -503,6 +595,7 @@ class NetworkTopologyCard extends HTMLElement {
     this._renderHead(m);
     this._renderDetail();
     this._renderExtra(m);
+    this._applyHeight();
     if (!this._fitted && this._bounds) {
       this._fitted = true;
       this._rootId = trees[0]?.id;
@@ -554,14 +647,14 @@ class NetworkTopologyCard extends HTMLElement {
       const n = t.node, p = pos.get(t.id);
       if (t.link && pos.has(t.link.source)) {
         const s = pos.get(t.link.source);
-        const sx = s.x + NODE_W, tx = p.x, mx = (sx + tx) / 2;
+        const g = this._edgeGeometry(s, p);
         const warn = this._warnings(n, t.link).length && n.online !== false;
         const cls = ["edge", t.link.layer, t.link.connected === false ? "down" : "", t.link.attrs?.route_conflict ? "conflict" : warn ? "warn" : "", onPath.has(t.id) ? "on-path" : "", sel && !onPath.has(t.id) ? "dim" : ""].join(" ");
-        svgEl("path", { d: `M${sx},${s.y} C${mx},${s.y} ${mx},${p.y} ${tx},${p.y}`, class: cls, style: `--c:${LAYER_COLOR[t.link.layer] || LAYER_COLOR.lan}` }, this._gEdges);
+        svgEl("path", { d: g.d, class: cls, style: `--c:${LAYER_COLOR[t.link.layer] || LAYER_COLOR.lan}` }, this._gEdges);
         const label = this._edgeLabel(t.link);
         if (label) {
           // Next to the child, where every row has its own space (no pile-up at fan-outs).
-          const tl = svgEl("text", { x: tx - 5, y: p.y - 7, class: `elabel${sel && !onPath.has(t.id) ? " dim" : ""}` }, this._gLabels);
+          const tl = svgEl("text", { x: g.lx, y: g.ly, class: `elabel${sel && !onPath.has(t.id) ? " dim" : ""}`, style: `text-anchor:${g.anchor}` }, this._gLabels);
           tl.textContent = label;
         }
       }
@@ -569,6 +662,21 @@ class NetworkTopologyCard extends HTMLElement {
       t.kids.forEach(walk);
     };
     trees.forEach(walk);
+  }
+
+  _edgeGeometry(s, p) {
+    if (!this._vertical) {
+      const sx = s.x + NODE_W, tx = p.x, mx = (sx + tx) / 2;
+      return { d: `M${sx},${s.y} C${mx},${s.y} ${mx},${p.y} ${tx},${p.y}`, lx: tx - 5, ly: p.y - 7, anchor: "end" };
+    }
+    const sx = s.x + NODE_W / 2, sy = s.y + NODE_H / 2;
+    if (p.entry === "left") {
+      // Stacked leaf: from the parent's bottom into the leaf's left side.
+      const tx = p.x, ty = p.y;
+      return { d: `M${sx},${sy} C${sx},${(sy + ty) / 2} ${tx - 40},${ty} ${tx},${ty}`, lx: tx - 5, ly: ty - 7, anchor: "end" };
+    }
+    const tx = p.x + NODE_W / 2, ty = p.y - NODE_H / 2, my = (sy + ty) / 2;
+    return { d: `M${sx},${sy} C${sx},${my} ${tx},${my} ${tx},${ty}`, lx: tx + 6, ly: ty - 9, anchor: "start" };
   }
 
   _drawNode(t, p, sel, onPath) {
@@ -589,7 +697,8 @@ class NetworkTopologyCard extends HTMLElement {
     title.textContent = n.name;
     if (warn) svgEl("circle", { class: "flag", cx: NODE_W - 9, cy: 9, r: 4.5 }, g);
     if (t.total) {
-      const tg = svgEl("g", { class: "tg", transform: `translate(${NODE_W},${NODE_H / 2})` }, g);
+      const at = this._vertical ? `${NODE_W / 2},${NODE_H}` : `${NODE_W},${NODE_H / 2}`;
+      const tg = svgEl("g", { class: "tg", transform: `translate(${at})` }, g);
       svgEl("circle", { r: t.collapsed ? 11 : 8 }, tg);
       const tt = svgEl("text", {}, tg);
       tt.textContent = t.collapsed ? `+${t.total}` : "−";

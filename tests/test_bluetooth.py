@@ -64,6 +64,19 @@ class ScannerTests(unittest.TestCase):
         self.assertEqual(proxy.attrs["ha_device_id"], "dev-proxy")
         self.assertNotIn(f"ble_scanner:{PROXY_BT.lower()}", topo.nodes)
 
+    def test_esp32_ethernet_mac_offset(self):
+        # ESPHome registers the base MAC, the box sees a derived one (here base+2),
+        # like the real seeed-esp32-poe: registry …9a:b8, FRITZ!Box …9a:bb.
+        scanners = [dict(SCANNERS[1], network_mac="24:0a:c4:9b:11:00")]
+        topo = build(scanners)
+        self.assertIn("bluetooth", topo.nodes[PROXY_LAN].layers)
+        self.assertFalse(any("not found" in w for w in topo.warnings))
+
+    def test_mac_offset_must_be_unique_and_small(self):
+        scanners = [dict(SCANNERS[1], network_mac="24:0a:c4:9b:11:0a")]  # off by 8
+        topo = build(scanners)
+        self.assertTrue(any("not found" in w for w in topo.warnings))
+
     def test_local_adapter_on_ha_host(self):
         topo = build()
         self.assertIn("bluetooth", topo.nodes[HA].layers)

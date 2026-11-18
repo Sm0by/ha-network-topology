@@ -34,6 +34,35 @@ from .model import (
 )
 
 
+def find_mac_node(topo: Topology, mac: str | None) -> str | None:
+    """Node for a network MAC, tolerating ESP32-style derived MACs.
+
+    ESP32 derives its MACs from one base: Wi-Fi = base, Bluetooth = base+2,
+    Ethernet = base+3. ESPHome registers the base MAC, while the FRITZ!Box
+    sees the Ethernet MAC of a PoE board. Accept a unique node whose MAC
+    differs only in the last byte by up to 3.
+    """
+    if not mac:
+        return None
+    if f"mac:{mac}" in topo.nodes:
+        return f"mac:{mac}"
+    prefix, _, last = mac.rpartition(":")
+    try:
+        base = int(last, 16)
+    except ValueError:
+        return None
+    hits = []
+    for node in topo.nodes.values():
+        if not node.mac or not node.mac.startswith(prefix + ":"):
+            continue
+        try:
+            if 0 < abs(int(node.mac.rpartition(":")[2], 16) - base) <= 3:
+                hits.append(node.id)
+        except ValueError:
+            continue
+    return hits[0] if len(hits) == 1 else None
+
+
 def enrich_from_registry(topo: Topology, registry: dict[str, dict[str, Any]]) -> None:
     """Attach HA device ids and user names to LAN/WLAN nodes by network MAC.
 
@@ -68,10 +97,11 @@ def add_bluetooth(
         if not source:
             continue
         net = norm_mac(sc.get("network_mac"))
+        lan_node = find_mac_node(topo, net)
         if sc.get("local") and host_id and host_id in topo.nodes:
             nid = host_id
-        elif net and f"mac:{net}" in topo.nodes:
-            nid = f"mac:{net}"
+        elif lan_node:
+            nid = lan_node
         else:
             nid = f"ble_scanner:{source.lower()}"
             topo.add_node(

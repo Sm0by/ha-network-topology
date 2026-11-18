@@ -40,7 +40,7 @@
   document.getElementById("src").textContent = "Daten: " + url;
   document.getElementById("dark").addEventListener("change", (e) => document.documentElement.classList.toggle("dark", e.target.checked));
   const card = document.getElementById("card");
-  card.setConfig({ height: 620 });
+  card.setConfig({ height: params.get("height") || 620, layout: params.get("layout") || "horizontal" });
   card.hass = {
     language: "de",
     connection: {

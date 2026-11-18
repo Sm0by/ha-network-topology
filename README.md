@@ -79,7 +79,8 @@ Die Integration liefert die Lovelace-Karte selbst aus und meldet sie im Frontend
 ```yaml
 type: custom:network-topology-card
 title: Netzwerk            # optional
-height: 600                # Höhe der Zeichenfläche in px
+height: 600                # Höhe der Zeichenfläche in px, oder "full" für die volle Fensterhöhe
+layout: horizontal         # oder "vertical": von oben nach unten, besser auf breiten Bildschirmen
 layers: [lan, wlan, zigbee, bluetooth]
 show_mesh: false           # zusätzliche Funkverbindungen außerhalb des Baums
 hide_offline: false
@@ -90,7 +91,7 @@ collapsed: []              # Knoten-IDs, die beim Start zugeklappt sind
 
 Funktionen:
 
-- **Baum** von links nach rechts mit Linienstil je Verbindungsart: LAN durchgezogen, WLAN gestrichelt, Zigbee gepunktet, Bluetooth Strich-Punkt.
+- **Baum** von links nach rechts oder von oben nach unten (Schalter ⇅/⇄ in der Karte), mit Linienstil je Verbindungsart: LAN durchgezogen, WLAN gestrichelt, Zigbee gepunktet, Bluetooth Strich-Punkt. Von oben nach unten stapeln sich Endgeräte unter ihrem Parent als Liste, damit große Gruppen wie WLAN-Clients oder Zigbee-End-Devices nicht in die Breite gehen.
 - **Beschriftung** je Verbindung: Port, Band und RSSI, LQI.
 - **Bedienung:** Ebenen-Filter, Teilbäume auf- und zuklappen (− / +N am Knoten), Zoomen mit Mausrad, Verschieben durch Ziehen, Suche nach Name, IP oder MAC.
 - **Detailpanel** mit Werten, Datenquelle, Weg zum Internet und Link zur HA-Geräteseite.
