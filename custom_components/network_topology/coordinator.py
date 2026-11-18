@@ -13,6 +13,7 @@ from fritzconnection.core.exceptions import (
 )
 import yaml
 
+from homeassistant.components.network import async_get_source_ip
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_HOST,
@@ -26,6 +27,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 
 from .collectors.fritz import FritzCredentials, FritzSource
+from .collectors.zha import async_get_radio_path, async_get_zha_devices, radio_host
 from .const import (
     CONF_FRITZ_ENTRY_ID,
     CONFIG_FILE,
@@ -35,6 +37,7 @@ from .const import (
 )
 from .topology.fritz_parse import parse_mesh
 from .topology.switches import apply_switches, load_config
+from .topology.zha_parse import add_zigbee, attach_point
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -108,5 +111,16 @@ class NetworkTopologyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         configs, config_warnings = load_config(raw_config)
         topo.warnings.extend(config_warnings)
         apply_switches(topo, configs, min_devices=DEFAULT_MIN_SWITCH_DEVICES)
-        # ZHA and Bluetooth collectors follow in later steps.
+
+        zha_devices = async_get_zha_devices(self.hass)
+        if zha_devices:
+            try:
+                ha_ip = await async_get_source_ip(self.hass)
+            except (OSError, ValueError):
+                ha_ip = None
+            host_id, radio = attach_point(
+                topo, ha_ip, radio_host(async_get_radio_path(self.hass))
+            )
+            add_zigbee(topo, zha_devices, host_id=host_id, radio_link=radio)
+        # Bluetooth follows in step 4.
         return topo.to_dict(generated=dt_util.now().isoformat())

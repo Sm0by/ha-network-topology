@@ -14,10 +14,16 @@ PASSIVE_SWITCH = "passive_switch"
 
 INFRA_KINDS = {ROUTER, REPEATER}
 
+ZIGBEE_COORDINATOR = "zigbee_coordinator"
+ZIGBEE_ROUTER = "zigbee_router"
+ZIGBEE_END_DEVICE = "zigbee_end_device"
+
 # Link layers
 WAN = "wan"
 LAN = "lan"
 WLAN = "wlan"
+ZIGBEE = "zigbee"
+USB = "usb"  # radio attached to the Home Assistant host
 
 
 def _compact(d: dict[str, Any]) -> dict[str, Any]:
@@ -54,6 +60,7 @@ class Link:
     band: str | None = None
     rssi: int | None = None
     rate_kbit: int | None = None
+    lqi: int | None = None
     connected: bool = True
     attrs: dict[str, Any] = field(default_factory=dict)
 
@@ -66,7 +73,8 @@ class Topology:
     """The merged graph."""
 
     nodes: dict[str, Node] = field(default_factory=dict)
-    links: list[Link] = field(default_factory=list)
+    links: list[Link] = field(default_factory=list)  # tree: one upstream link per node
+    mesh: list[Link] = field(default_factory=list)  # extra radio links outside the tree
     warnings: list[str] = field(default_factory=list)
 
     def add_node(self, node: Node) -> Node:
@@ -91,6 +99,11 @@ class Topology:
         """Return the upstream link of a node."""
         return next((l for l in self.links if l.target == node_id), None)
 
+    def find_by_ip(self, ip: str | None) -> str | None:
+        if not ip:
+            return None
+        return next((n.id for n in self.nodes.values() if n.ip == ip), None)
+
     def router_id(self) -> str | None:
         return next((n.id for n in self.nodes.values() if n.kind == ROUTER), None)
 
@@ -103,6 +116,7 @@ class Topology:
             "generated": generated,
             "nodes": [n.to_dict() for n in self.nodes.values()],
             "links": [l.to_dict() for l in self.links],
+            "mesh": [l.to_dict() for l in self.mesh],
             "unlinked": unlinked,
             "warnings": list(self.warnings),
         }

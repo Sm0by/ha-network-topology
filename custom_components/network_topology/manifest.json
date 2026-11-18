@@ -4,7 +4,7 @@
   "after_dependencies": ["fritz", "zha", "bluetooth"],
   "codeowners": ["@Sm0by"],
   "config_flow": true,
-  "dependencies": ["websocket_api"],
+  "dependencies": ["network", "websocket_api"],
   "documentation": "https://github.com/Sm0by/ha-network-topology",
   "integration_type": "service",
   "iot_class": "local_polling",

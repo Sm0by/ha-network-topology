@@ -4,7 +4,8 @@ Custom Integration, die das Heimnetz als einen Graphen zusammenführt:
 
 - **LAN und WLAN** aus der Mesh-Topologie der FRITZ!Box (TR-064), inklusive Repeater, Band und RSSI
 - **Passive Switches**: Manche erkennt die FRITZ!Box selbst (`device_class: NETWORK_SWITCH`). Die übrigen werden abgeleitet, wenn mehrere Geräte an einem LAN-Port hängen. Namen und Standorte kommen aus `network_topology.yaml`.
-- **Zigbee (ZHA)** und **Bluetooth**: folgen in den nächsten Schritten
+- **Zigbee (ZHA)**: Koordinator am HA-Host, Router und End Devices als Baum mit LQI. Weitere Funkverbindungen zwischen Routern stehen in `mesh`.
+- **Bluetooth**: folgt in Schritt 4
 
 Die Daten stehen über die WebSocket-API bereit und werden später von der Lovelace-Karte `network-topology-card` gezeichnet.
 
@@ -14,7 +15,7 @@ Die Daten stehen über die WebSocket-API bereit und werden später von der Lovel
 |---|---|---|
 | 1 | FRITZ!Box-Collector, Probe-Skript | fertig, an FRITZ!Box 7590 AX (FRITZ!OS 8.25, Mesh-Schema 8.7) geprüft |
 | 2 | Switch-Ableitung + YAML | fertig, mit echten Daten geprüft |
-| 3 | ZHA-Collector | offen |
+| 3 | ZHA-Collector, Zigbee-Baum | fertig (Unit-Tests), wartet auf Test mit echten ZHA-Daten |
 | 4 | Bluetooth-Collector, Zusammenführung über MAC | offen |
 | 5 | Lovelace-Karte | offen |
 | 6 | Sensoren, HACS-Paket | offen |
@@ -27,6 +28,22 @@ python tools/fritz_mesh_probe.py --user <fritzbox-benutzer>
 ```
 
 Das Skript fragt das Passwort ab, zeigt Mesh-Geräte, LAN-Ports, WLAN-Clients und die abgeleiteten Switches. Die Rohdaten landen in `tools/out/` (nicht im Git, enthalten MAC-Adressen). Mit `--from-file tools/out/mesh_raw.json` lässt sich die Auswertung ohne Box wiederholen, mit `--config network_topology.example.yaml` die YAML testen.
+
+## Zigbee-Baum prüfen
+
+ZHA rechnet aus seinen Nachbar- und Routing-Tabellen einen Baum: End Devices hängen an dem Router, der sie als Kind führt. Router hängen an der nächsten Station ihrer aktiven Route zum Koordinator, ohne Route am besten Pfad nach LQI. Zum Prüfen die ZHA-Daten im Browser exportieren (in HA angemeldet, Konsole mit F12):
+
+```js
+copy(JSON.stringify(await document.querySelector("home-assistant").hass.callWS({type: "zha/devices"})))
+```
+
+Als `tools/out/zha_devices.json` speichern und ausführen:
+
+```bash
+python tools/zha_probe.py tools/out/zha_devices.json --mesh tools/out/mesh_raw.json --ha-ip <ip-von-home-assistant>
+```
+
+ZHA liest die Tabellen in eigenen Abständen neu ein. Für frische Werte vorher in ZHA *Einstellungen → Visualisierung → Topologie aktualisieren* ausführen.
 
 ## Installation in Home Assistant
 

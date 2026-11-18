@@ -1,0 +1,38 @@
+[
+  {"ieee": "00:12:4b:00:00:00:00:01", "nwk": "0x0000", "name": "Texas Instruments ZBT", "model": "SkyConnect", "device_type": "Coordinator", "active_coordinator": true, "available": true,
+   "neighbors": [
+     {"ieee": "00:17:88:00:00:00:00:11", "nwk": "0x1111", "relationship": "Sibling", "device_type": "Router", "lqi": "220"},
+     {"ieee": "00:17:88:00:00:00:00:22", "nwk": "0x2222", "relationship": "Sibling", "device_type": "Router", "lqi": "90"},
+     {"ieee": "00:17:88:00:00:00:00:33", "nwk": "0x3333", "relationship": "Sibling", "device_type": "Router", "lqi": "60"},
+     {"ieee": "00:15:8d:00:00:00:00:e4", "nwk": "0xE444", "relationship": "Child", "device_type": "EndDevice", "lqi": "150"},
+     {"ieee": "aa:aa:aa:aa:aa:aa:aa:aa", "nwk": "0x9999", "relationship": "Sibling", "device_type": "Router", "lqi": "40"}
+   ],
+   "routes": []},
+  {"ieee": "00:17:88:00:00:00:00:11", "nwk": "0x1111", "name": "Signify Steckdose", "user_given_name": "Steckdose Flur", "device_type": "Router", "available": true, "lqi": 230, "device_reg_id": "dev-r1", "area_id": "flur",
+   "neighbors": [
+     {"ieee": "00:12:4b:00:00:00:00:01", "nwk": "0x0000", "relationship": "Sibling", "device_type": "Coordinator", "lqi": "230"},
+     {"ieee": "00:15:8d:00:00:00:00:e1", "nwk": "0xE111", "relationship": "Child", "device_type": "EndDevice", "lqi": "180"},
+     {"ieee": "00:17:88:00:00:00:00:22", "nwk": "0x2222", "relationship": "Sibling", "device_type": "Router", "lqi": "170"}
+   ],
+   "routes": [{"dest_nwk": "0x0000", "next_hop": "0x0000", "route_status": "Active"}]},
+  {"ieee": "00:17:88:00:00:00:00:22", "nwk": "0x2222", "name": "Deckenlampe WZ", "device_type": "Router", "available": true,
+   "neighbors": [
+     {"ieee": "00:17:88:00:00:00:00:11", "nwk": "0x1111", "relationship": "Sibling", "device_type": "Router", "lqi": "160"},
+     {"ieee": "00:17:88:00:00:00:00:33", "nwk": "0x3333", "relationship": "Sibling", "device_type": "Router", "lqi": "200"}
+   ],
+   "routes": [
+     {"dest_nwk": "0x4444", "next_hop": "0x3333", "route_status": "Active"},
+     {"dest_nwk": "0x0000", "next_hop": "0x1111", "route_status": "Active"}
+   ]},
+  {"ieee": "00:17:88:00:00:00:00:33", "nwk": "0x3333", "name": "Lampe Keller", "device_type": "Router", "available": true,
+   "neighbors": [
+     {"ieee": "00:17:88:00:00:00:00:22", "nwk": "0x2222", "relationship": "Sibling", "device_type": "Router", "lqi": "200"},
+     {"ieee": "00:12:4b:00:00:00:00:01", "nwk": "0x0000", "relationship": "Sibling", "device_type": "Coordinator", "lqi": "55"}
+   ],
+   "routes": []},
+  {"ieee": "00:15:8d:00:00:00:00:e1", "nwk": "0xE111", "name": "Bewegung Flur", "device_type": "EndDevice", "available": true, "power_source": "Battery or Unknown", "neighbors": [], "routes": []},
+  {"ieee": "00:15:8d:00:00:00:00:e2", "nwk": "0xE222", "name": "Temperatur Bad", "device_type": "EndDevice", "available": true,
+   "neighbors": [{"ieee": "00:17:88:00:00:00:00:22", "nwk": "0x2222", "relationship": "Parent", "device_type": "Router", "lqi": "120"}], "routes": []},
+  {"ieee": "00:15:8d:00:00:00:00:e3", "nwk": "0xE333", "name": "Fenster Küche", "device_type": "EndDevice", "available": false, "lqi": 80, "neighbors": [], "routes": []},
+  {"ieee": "00:15:8d:00:00:00:00:e4", "nwk": "0xE444", "name": "Taster Bett", "device_type": "EndDevice", "available": true, "neighbors": [], "routes": []}
+]
