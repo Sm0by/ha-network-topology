@@ -16,13 +16,16 @@
  * No build step, no external libraries.
  */
 
-const CARD_VERSION = "0.2.0";
+const CARD_VERSION = "0.2.1";
 const NS = "http://www.w3.org/2000/svg";
 const NODE_W = 184;
 const NODE_H = 46;
 const COL = 244; // horizontal: distance between levels
 const ROW = 56; // horizontal: distance between rows
-const SLOT = NODE_W + 76; // vertical: width of one column
+const SLOT = NODE_W + 96; // vertical: width of one column
+const NODE_X = 40; // vertical: node offset inside its column
+const RAIL_X = 64; // vertical: x of the rail a stacked list hangs on
+const STACK_INDENT = 88; // vertical: x of stacked leaves (labels fit left of the rail)
 const LEVEL = 116; // vertical: distance between levels
 const STACK_ROW = 54; // vertical: distance in a stacked leaf list
 const STACK_MAX = 10; // vertical: leaves per stacked column
@@ -36,6 +39,7 @@ const STRINGS = {
     title: "Netzwerk", layers: { lan: "LAN", wlan: "WLAN", zigbee: "Zigbee", bluetooth: "Bluetooth" },
     mesh: "Mesh-Verbindungen", hideOffline: "Offline ausblenden", search: "Gerät suchen …",
     fit: "Alles zeigen", zoomIn: "Vergrößern", zoomOut: "Verkleinern", direction: "Ausrichtung wechseln",
+    horizontal: "Von links", vertical: "Von oben",
     online: "online", offline: "offline", warnings: "Warnungen", rescan: "Zigbee-Nachscan läuft",
     updated: "aktualisiert", loading: "Lade Topologie …", notLoaded: "Die Integration Network Topology ist nicht eingerichtet oder liefert keine Daten.",
     noSelection: "Kein Gerät gewählt", noSelectionHint: "Klicke auf ein Gerät, um Verbindungsweg, Signalwerte und Datenquelle zu sehen.",
@@ -65,6 +69,7 @@ const STRINGS = {
     title: "Network", layers: { lan: "LAN", wlan: "Wi-Fi", zigbee: "Zigbee", bluetooth: "Bluetooth" },
     mesh: "Mesh links", hideOffline: "Hide offline", search: "Find device …",
     fit: "Show all", zoomIn: "Zoom in", zoomOut: "Zoom out", direction: "Switch direction",
+    horizontal: "Left to right", vertical: "Top down",
     online: "online", offline: "offline", warnings: "warnings", rescan: "Zigbee rescan running",
     updated: "updated", loading: "Loading topology …", notLoaded: "The Network Topology integration is not set up or returns no data.",
     noSelection: "No device selected", noSelectionHint: "Click a device to see its path, signal values and data source.",
@@ -253,7 +258,9 @@ class NetworkTopologyCard extends HTMLElement {
     this._subscribe();
     if (!this._onResize) this._onResize = () => this._applyHeight();
     window.addEventListener("resize", this._onResize);
+    // HA may still move the card while the view settles (header, sidebar, edit mode).
     requestAnimationFrame(() => this._applyHeight());
+    for (const ms of [300, 1000, 2500]) setTimeout(() => this._applyHeight(), ms);
   }
 
   disconnectedCallback() {
@@ -330,8 +337,8 @@ class NetworkTopologyCard extends HTMLElement {
     const search = htmlEl("input", { type: "search", placeholder: t.search, "aria-label": t.search }, bar);
     search.addEventListener("keydown", (e) => { if (e.key === "Enter") this._search(search.value); });
     search.addEventListener("search", () => this._search(search.value));
-    const dirBtn = htmlEl("button", { cls: "zoom", title: t.direction, "aria-label": t.direction }, bar);
-    const dirIcon = () => { dirBtn.textContent = this._vertical ? "⇄" : "⇅"; };
+    const dirBtn = htmlEl("button", { cls: "chip dir", title: t.direction, "aria-label": t.direction }, bar);
+    const dirIcon = () => { dirBtn.textContent = this._vertical ? `↕ ${t.vertical}` : `↔ ${t.horizontal}`; };
     dirIcon();
     dirBtn.addEventListener("click", () => {
       this._vertical = !this._vertical;
@@ -540,24 +547,28 @@ class NetworkTopologyCard extends HTMLElement {
       const leaves = t.kids.filter((k) => !k.kids.length);
       const stack = leaves.length >= 3;
       const centers = [];
+      let center = null;
       if (stack) {
+        // The parent sits directly above its first stack column; the list hangs
+        // on a rail below it, branch children continue to the right.
+        center = slot;
         for (let i = 0; i < leaves.length; i += STACK_MAX) {
           leaves.slice(i, i + STACK_MAX).forEach((leaf, j) => {
-            pos.set(leaf.id, { x: slot * SLOT + 60, y: top + LEVEL + j * STACK_ROW, entry: "left" });
+            pos.set(leaf.id, { x: slot * SLOT + STACK_INDENT, y: top + LEVEL * 0.85 + j * STACK_ROW, entry: "left", rail: slot * SLOT + RAIL_X });
           });
-          centers.push(slot);
           slot += 1;
         }
       }
       for (const k of stack ? t.kids.filter((k) => k.kids.length) : t.kids) centers.push(place(k, depth + 1));
-      let center;
-      if (!centers.length) {
-        center = slot;
-        slot += 1;
-      } else {
-        center = (Math.min(...centers) + Math.max(...centers)) / 2;
+      if (center === null) {
+        if (!centers.length) {
+          center = slot;
+          slot += 1;
+        } else {
+          center = (Math.min(...centers) + Math.max(...centers)) / 2;
+        }
       }
-      pos.set(t.id, { x: center * SLOT + (SLOT - NODE_W) / 2, y: top, entry: "top" });
+      pos.set(t.id, { x: center * SLOT + NODE_X, y: top, entry: "top" });
       return center;
     };
     for (const t of trees) {
@@ -671,9 +682,13 @@ class NetworkTopologyCard extends HTMLElement {
     }
     const sx = s.x + NODE_W / 2, sy = s.y + NODE_H / 2;
     if (p.entry === "left") {
-      // Stacked leaf: from the parent's bottom into the leaf's left side.
-      const tx = p.x, ty = p.y;
-      return { d: `M${sx},${sy} C${sx},${(sy + ty) / 2} ${tx - 40},${ty} ${tx},${ty}`, lx: tx - 5, ly: ty - 7, anchor: "end" };
+      // Stacked leaf: down the rail below the parent, then right into the leaf.
+      // Further stack columns branch off the first rail just below the parent.
+      const rail = p.rail ?? p.x - 24, ty = p.y, start = s.x + (RAIL_X - NODE_X), jog = sy + 14;
+      return {
+        d: `M${start},${sy} V${jog} H${rail} V${ty - 6} Q${rail},${ty} ${rail + 6},${ty} H${p.x}`,
+        lx: rail - 4, ly: ty - 6, anchor: "end",
+      };
     }
     const tx = p.x + NODE_W / 2, ty = p.y - NODE_H / 2, my = (sy + ty) / 2;
     return { d: `M${sx},${sy} C${sx},${my} ${tx},${my} ${tx},${ty}`, lx: tx + 6, ly: ty - 9, anchor: "start" };
