@@ -1,0 +1,25 @@
+# Copy to /config/network_topology.yaml in Home Assistant.
+# The file is read on every update, no restart needed.
+
+passive_switches:
+  - id: sw_buero                 # a-z, 0-9, _
+    name: Switch Büro
+    location: Arbeitszimmer
+    ports: 8
+    uplink: fritzbox:LAN1        # fritzbox | <device name> | <mac> , then :LAN<n>
+
+  - id: sw_wohnzimmer
+    name: Switch Wohnzimmer
+    location: TV-Schrank
+    ports: 5
+    uplink: fritzbox:LAN2
+    # members: optional, places devices here explicitly
+    # (needed if only one device hangs on the switch, or for cascades)
+    # members:
+    #   - aa:bb:cc:dd:ee:ff
+
+  # Cascaded switch behind another switch:
+  # - id: sw_schreibtisch
+  #   name: Switch Schreibtisch
+  #   uplink: switch:sw_buero
+  #   members: [aa:bb:cc:dd:ee:01, aa:bb:cc:dd:ee:02]

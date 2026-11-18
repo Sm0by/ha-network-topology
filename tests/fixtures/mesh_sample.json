@@ -1,0 +1,65 @@
+{
+  "_comment": "Synthetic sample in the FRITZ!OS mesh list format. Not real devices.",
+  "mesh": {
+    "schema_version": "5.3",
+    "nodes": [
+      {
+        "uid": "n-1", "device_name": "fritz.box", "device_model": "FRITZ!Box 7590",
+        "device_mac_address": "C8:0E:14:00:00:01", "device_firmware_version": "154.08.02",
+        "is_meshed": true, "mesh_role": "master",
+        "node_interfaces": [
+          {"uid": "ni-1-lan1", "name": "LAN:1", "type": "LAN", "node_links": [
+            {"uid": "nl-pc", "type": "LAN", "state": "CONNECTED", "node_1_uid": "n-1", "node_2_uid": "n-pc", "node_interface_1_uid": "ni-1-lan1", "node_interface_2_uid": "ni-pc", "cur_data_rate_rx": 1000000},
+            {"uid": "nl-nas", "type": "LAN", "state": "CONNECTED", "node_1_uid": "n-1", "node_2_uid": "n-nas", "node_interface_1_uid": "ni-1-lan1", "node_interface_2_uid": "ni-nas"},
+            {"uid": "nl-ha", "type": "LAN", "state": "CONNECTED", "node_1_uid": "n-1", "node_2_uid": "n-ha", "node_interface_1_uid": "ni-1-lan1", "node_interface_2_uid": "ni-ha"}
+          ]},
+          {"uid": "ni-1-lan2", "name": "LAN:2", "type": "LAN", "node_links": [
+            {"uid": "nl-tv", "type": "LAN", "state": "CONNECTED", "node_1_uid": "n-1", "node_2_uid": "n-tv", "node_interface_1_uid": "ni-1-lan2", "node_interface_2_uid": "ni-tv"},
+            {"uid": "nl-console", "type": "LAN", "state": "DISCONNECTED", "node_1_uid": "n-1", "node_2_uid": "n-console", "node_interface_1_uid": "ni-1-lan2", "node_interface_2_uid": "ni-console"}
+          ]},
+          {"uid": "ni-1-lan3", "name": "LAN:3", "type": "LAN", "node_links": [
+            {"uid": "nl-printer", "type": "LAN", "state": "CONNECTED", "node_1_uid": "n-printer", "node_2_uid": "n-1", "node_interface_1_uid": "ni-printer", "node_interface_2_uid": "ni-1-lan3"}
+          ]},
+          {"uid": "ni-1-5g", "name": "AP:5G:0", "type": "WLAN", "ssid": "Heimnetz", "node_links": [
+            {"uid": "nl-rep", "type": "WLAN", "state": "CONNECTED", "node_1_uid": "n-1", "node_2_uid": "n-rep", "node_interface_1_uid": "ni-1-5g", "node_interface_2_uid": "ni-rep-up", "rx_rssi": -55},
+            {"uid": "nl-phone", "type": "WLAN", "state": "CONNECTED", "node_1_uid": "n-1", "node_2_uid": "n-phone", "node_interface_1_uid": "ni-1-5g", "node_interface_2_uid": "ni-phone", "rx_rssi": -49}
+          ]},
+          {"uid": "ni-1-2g", "name": "AP:2G:0", "type": "WLAN", "ssid": "Heimnetz", "node_links": [
+            {"uid": "nl-tablet", "type": "WLAN", "state": "CONNECTED", "node_1_uid": "n-1", "node_2_uid": "n-tablet", "node_interface_1_uid": "ni-1-2g", "node_interface_2_uid": "ni-tablet", "rx_rssi": -66}
+          ]}
+        ]
+      },
+      {
+        "uid": "n-rep", "device_name": "FRITZ!Repeater", "device_mac_address": "C8:0E:14:00:00:02",
+        "is_meshed": true, "mesh_role": "slave",
+        "node_interfaces": [
+          {"uid": "ni-rep-up", "name": "UPLINK:5G:0", "type": "WLAN", "node_links": [
+            {"uid": "nl-rep", "type": "WLAN", "state": "CONNECTED", "node_1_uid": "n-1", "node_2_uid": "n-rep", "node_interface_1_uid": "ni-1-5g", "node_interface_2_uid": "ni-rep-up", "rx_rssi": -55}
+          ]},
+          {"uid": "ni-rep-5g", "name": "AP:5G:0", "type": "WLAN", "node_links": [
+            {"uid": "nl-laptop", "type": "WLAN", "state": "CONNECTED", "node_1_uid": "n-laptop", "node_2_uid": "n-rep", "node_interface_1_uid": "ni-laptop", "node_interface_2_uid": "ni-rep-5g", "rx_rssi": -61}
+          ]},
+          {"uid": "ni-rep-2g", "name": "AP:2G:0", "type": "WLAN", "node_links": [
+            {"uid": "nl-proxy", "type": "WLAN", "state": "CONNECTED", "node_1_uid": "n-rep", "node_2_uid": "n-proxy", "node_interface_1_uid": "ni-rep-2g", "node_interface_2_uid": "ni-proxy", "rx_rssi": -58}
+          ]}
+        ]
+      },
+      {"uid": "n-pc", "device_name": "Desktop-PC", "device_mac_address": "3C:22:FB:10:4E:A1", "mesh_role": "unknown", "node_interfaces": [{"uid": "ni-pc", "type": "LAN", "node_links": []}]},
+      {"uid": "n-nas", "device_name": "NAS", "device_mac_address": "00:11:32:AF:09:5E", "mesh_role": "unknown", "node_interfaces": [{"uid": "ni-nas", "type": "LAN", "node_links": []}]},
+      {"uid": "n-ha", "device_name": "homeassistant", "device_mac_address": "D8:3A:DD:41:7C:02", "mesh_role": "unknown", "node_interfaces": [{"uid": "ni-ha", "type": "LAN", "node_links": []}]},
+      {"uid": "n-tv", "device_name": "Fernseher", "device_mac_address": "A8:23:FE:6C:12:90", "mesh_role": "unknown", "node_interfaces": [{"uid": "ni-tv", "type": "LAN", "node_links": []}]},
+      {"uid": "n-console", "device_name": "Spielkonsole", "device_mac_address": "70:9E:29:44:B1:0C", "mesh_role": "unknown", "node_interfaces": [{"uid": "ni-console", "type": "LAN", "node_links": []}]},
+      {"uid": "n-printer", "device_name": "Drucker", "device_mac_address": "00:1B:A9:77:01:02", "mesh_role": "unknown", "node_interfaces": [{"uid": "ni-printer", "type": "LAN", "node_links": []}]},
+      {"uid": "n-phone", "device_name": "Smartphone", "device_mac_address": "5A:11:22:33:44:55", "mesh_role": "unknown", "node_interfaces": [{"uid": "ni-phone", "type": "WLAN", "node_links": []}]},
+      {"uid": "n-tablet", "device_name": "Tablet", "device_mac_address": "5A:11:22:33:44:56", "mesh_role": "unknown", "node_interfaces": [{"uid": "ni-tablet", "type": "WLAN", "node_links": []}]},
+      {"uid": "n-laptop", "device_name": "Laptop", "device_mac_address": "5A:11:22:33:44:57", "mesh_role": "unknown", "node_interfaces": [{"uid": "ni-laptop", "type": "WLAN", "node_links": []}]},
+      {"uid": "n-proxy", "device_name": "bt-proxy-kueche", "device_mac_address": "24:0A:C4:9B:11:02", "mesh_role": "unknown", "node_interfaces": [{"uid": "ni-proxy", "type": "WLAN", "node_links": []}]}
+    ]
+  },
+  "hosts": [
+    {"ip": "192.168.178.20", "name": "homeassistant", "mac": "D8:3A:DD:41:7C:02", "status": true, "interface_type": "Ethernet"},
+    {"ip": "192.168.178.31", "name": "Desktop-PC", "mac": "3C:22:FB:10:4E:A1", "status": true, "interface_type": "Ethernet"},
+    {"ip": "192.168.178.53", "name": "Spielkonsole", "mac": "70:9E:29:44:B1:0C", "status": false, "interface_type": "Ethernet"},
+    {"ip": "192.168.178.80", "name": "Alter-Laptop", "mac": "5A:11:22:33:44:99", "status": false, "interface_type": "802.11"}
+  ]
+}

@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+# Probe output contains MAC addresses of the real network
+tools/out/

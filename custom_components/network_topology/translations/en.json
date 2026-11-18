@@ -1,0 +1,33 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Choose FRITZ!Box",
+        "description": "Reuse the credentials of an existing FRITZ!Box Tools entry or enter them manually.",
+        "data": {
+          "source_entry": "FRITZ!Box"
+        }
+      },
+      "manual": {
+        "title": "FRITZ!Box credentials",
+        "description": "The user needs the permission \"FRITZ!Box settings\" so the mesh topology can be read.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "username": "Username",
+          "password": "Password",
+          "ssl": "Use TLS"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to the FRITZ!Box.",
+      "invalid_auth": "The FRITZ!Box rejected the username or password.",
+      "mesh_unsupported": "The FRITZ!Box did not return a mesh topology. Check the user's permissions and the FRITZ!OS version.",
+      "unknown": "Unexpected error, see the log."
+    },
+    "abort": {
+      "single_instance_allowed": "Network Topology is already set up."
+    }
+  }
+}

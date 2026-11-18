@@ -1,0 +1,15 @@
+{
+  "domain": "network_topology",
+  "name": "Network Topology",
+  "after_dependencies": ["fritz", "zha", "bluetooth"],
+  "codeowners": ["@Sm0by"],
+  "config_flow": true,
+  "dependencies": ["websocket_api"],
+  "documentation": "https://github.com/Sm0by/ha-network-topology",
+  "integration_type": "service",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/Sm0by/ha-network-topology/issues",
+  "requirements": ["fritzconnection>=1.13.0"],
+  "single_config_entry": true,
+  "version": "0.1.0"
+}

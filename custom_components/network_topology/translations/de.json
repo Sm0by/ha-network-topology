@@ -1,0 +1,33 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "FRITZ!Box wählen",
+        "description": "Zugangsdaten einer vorhandenen FRITZ!Box-Tools-Integration übernehmen oder von Hand eingeben.",
+        "data": {
+          "source_entry": "FRITZ!Box"
+        }
+      },
+      "manual": {
+        "title": "FRITZ!Box-Zugang",
+        "description": "Der Benutzer braucht das Recht „FRITZ!Box Einstellungen“, damit die Mesh-Topologie gelesen werden kann.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "username": "Benutzername",
+          "password": "Passwort",
+          "ssl": "TLS verwenden"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Keine Verbindung zur FRITZ!Box.",
+      "invalid_auth": "Die FRITZ!Box hat Benutzername oder Passwort abgelehnt.",
+      "mesh_unsupported": "Die FRITZ!Box liefert keine Mesh-Topologie. Prüfe die Rechte des Benutzers und die FRITZ!OS-Version.",
+      "unknown": "Unerwarteter Fehler, siehe Log."
+    },
+    "abort": {
+      "single_instance_allowed": "Network Topology ist bereits eingerichtet."
+    }
+  }
+}
