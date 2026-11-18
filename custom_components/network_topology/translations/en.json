@@ -29,5 +29,31 @@
     "abort": {
       "single_instance_allowed": "Network Topology is already set up."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Network Topology options",
+        "description": "When the Zigbee tree shows contradictions between neighbor tables and the coordinator's routes, re-read the tables of the routers involved. At most once per hour, each router at most every 6 hours.",
+        "data": {
+          "auto_rescan": "Rescan Zigbee topology automatically on contradictions"
+        }
+      }
+    }
+  },
+  "entity": {
+    "button": {
+      "zigbee_rescan": {
+        "name": "Check Zigbee topology"
+      }
+    }
+  },
+  "exceptions": {
+    "rescan_busy": {
+      "message": "A Zigbee topology scan is already running. Try again when it has finished."
+    },
+    "rescan_nothing": {
+      "message": "No Zigbee routers available to scan. Is ZHA loaded?"
+    }
   }
 }

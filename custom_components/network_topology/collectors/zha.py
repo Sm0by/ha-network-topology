@@ -79,6 +79,53 @@ def async_get_zha_devices(hass: HomeAssistant) -> list[dict[str, Any]] | None:
     return devices
 
 
+def _application(hass: HomeAssistant) -> Any | None:
+    """The zigpy ControllerApplication of the loaded ZHA gateway."""
+    if ZHA_DOMAIN not in hass.config.components:
+        return None
+    try:
+        from homeassistant.components.zha.helpers import get_zha_gateway_proxy
+
+        return get_zha_gateway_proxy(hass).gateway.application_controller
+    except (ImportError, KeyError, ValueError, AttributeError):
+        return None
+
+
+@callback
+def zha_scan_running(hass: HomeAssistant) -> bool:
+    """True while zigpy runs a topology scan (ZHA's own or ours)."""
+    app = _application(hass)
+    task = getattr(getattr(app, "topology", None), "_scan_task", None)
+    return task is not None and not task.done()
+
+
+async def async_scan_zha_devices(hass: HomeAssistant, ieees: list[str]) -> int:
+    """Re-read neighbor and route tables of the given devices.
+
+    Uses zigpy's targeted scan, the same mechanism as ZHA's
+    "Refresh topology" button, limited to these devices. Returns the number
+    of devices scanned. Caller must check ``zha_scan_running`` first: a new
+    scan cancels one that is running.
+    """
+    app = _application(hass)
+    if app is None:
+        return 0
+    from zigpy.types import EUI64
+
+    devices = []
+    for ieee in ieees:
+        try:
+            device = app.devices.get(EUI64.convert(ieee))
+        except ValueError:
+            continue
+        if device is not None:
+            devices.append(device)
+    if devices:
+        _LOGGER.debug("Rescanning Zigbee topology of %d devices", len(devices))
+        await app.topology.scan(devices=devices)
+    return len(devices)
+
+
 @callback
 def async_get_radio_path(hass: HomeAssistant) -> str | None:
     """Serial path or socket:// URL of the ZHA radio."""

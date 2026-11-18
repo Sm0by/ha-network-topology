@@ -29,5 +29,31 @@
     "abort": {
       "single_instance_allowed": "Network Topology ist bereits eingerichtet."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Network-Topology-Optionen",
+        "description": "Widersprechen sich Nachbartabellen und Routen des Koordinators, werden die Tabellen der beteiligten Router neu gelesen. Höchstens einmal pro Stunde, jeder Router höchstens alle 6 Stunden.",
+        "data": {
+          "auto_rescan": "Zigbee-Topologie bei Widersprüchen automatisch neu lesen"
+        }
+      }
+    }
+  },
+  "entity": {
+    "button": {
+      "zigbee_rescan": {
+        "name": "Zigbee-Topologie prüfen"
+      }
+    }
+  },
+  "exceptions": {
+    "rescan_busy": {
+      "message": "Es läuft bereits ein Zigbee-Topologie-Scan. Bitte warten, bis er fertig ist."
+    },
+    "rescan_nothing": {
+      "message": "Keine Zigbee-Router zum Scannen gefunden. Ist ZHA geladen?"
+    }
   }
 }

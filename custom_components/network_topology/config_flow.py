@@ -13,7 +13,13 @@ from fritzconnection.core.exceptions import (
 )
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+)
+from homeassistant.core import callback
 from homeassistant.const import (
     CONF_HOST,
     CONF_PASSWORD,
@@ -30,8 +36,10 @@ from homeassistant.helpers.selector import (
 
 from .collectors.fritz import FritzCredentials, FritzSource
 from .const import (
+    CONF_AUTO_RESCAN,
     CONF_FRITZ_ENTRY_ID,
     CONF_SOURCE_ENTRY,
+    DEFAULT_AUTO_RESCAN,
     DEFAULT_HOST,
     DOMAIN,
     MANUAL_ENTRY,
@@ -47,6 +55,11 @@ class NetworkTopologyConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle the config flow."""
 
     VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+        return NetworkTopologyOptionsFlow()
 
     async def _async_test(self, creds: FritzCredentials) -> dict[str, str]:
         try:
@@ -128,3 +141,16 @@ class NetworkTopologyConfigFlow(ConfigFlow, domain=DOMAIN):
             }
         )
         return self.async_show_form(step_id="manual", data_schema=schema, errors=errors)
+
+
+class NetworkTopologyOptionsFlow(OptionsFlow):
+    """Options: automatic Zigbee rescan on contradictions."""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            return self.async_create_entry(data=user_input)
+        current = self.config_entry.options.get(CONF_AUTO_RESCAN, DEFAULT_AUTO_RESCAN)
+        schema = vol.Schema({vol.Required(CONF_AUTO_RESCAN, default=current): bool})
+        return self.async_show_form(step_id="init", data_schema=schema)

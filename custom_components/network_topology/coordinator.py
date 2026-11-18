@@ -5,7 +5,8 @@ from __future__ import annotations
 from datetime import timedelta
 import logging
 from pathlib import Path
-from typing import Any
+import time
+from typing import Any, Literal
 
 from fritzconnection.core.exceptions import (
     FritzAuthorizationError,
@@ -22,22 +23,34 @@ from homeassistant.const import (
     CONF_SSL,
     CONF_USERNAME,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
 from .collectors.fritz import FritzCredentials, FritzSource
-from .collectors.zha import async_get_radio_path, async_get_zha_devices, radio_host
+from .collectors.zha import (
+    async_get_radio_path,
+    async_get_zha_devices,
+    async_scan_zha_devices,
+    radio_host,
+    zha_scan_running,
+)
 from .const import (
+    CONF_AUTO_RESCAN,
     CONF_FRITZ_ENTRY_ID,
     CONFIG_FILE,
+    DEFAULT_AUTO_RESCAN,
     DEFAULT_MIN_SWITCH_DEVICES,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
 )
 from .topology.fritz_parse import parse_mesh
+from .topology.model import Topology
+from .topology.rescan import RescanPlanner, all_routers, conflict_candidates
 from .topology.switches import apply_switches, load_config
 from .topology.zha_parse import add_zigbee, attach_point
+
+RescanResult = Literal["started", "busy", "nothing"]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -73,6 +86,52 @@ class NetworkTopologyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         self._fritz: FritzSource | None = None
         self._creds: FritzCredentials | None = None
+        self.topology: Topology | None = None
+        self.rescan = RescanPlanner()
+        self._rescan_running = False
+        self._rescan_status: dict[str, Any] = {}
+
+    @property
+    def zigbee_available(self) -> bool:
+        return bool(self.topology and all_routers(self.topology))
+
+    @callback
+    def async_start_rescan(self, *, manual: bool = False) -> RescanResult:
+        """Targeted Zigbee rescan; throttled unless manual."""
+        if self.topology is None:
+            return "nothing"
+        if self._rescan_running or zha_scan_running(self.hass):
+            return "busy"
+        candidates = conflict_candidates(self.topology)
+        if manual and not candidates:
+            candidates = all_routers(self.topology)
+        now = time.monotonic()
+        devices = self.rescan.plan(candidates, now, force=manual)
+        if not devices:
+            return "nothing"
+        self.rescan.mark(devices, now)
+        self._rescan_running = True
+        self._rescan_status = {
+            "started": dt_util.now().isoformat(),
+            "trigger": "manual" if manual else "conflict",
+            "devices": len(devices),
+        }
+        self.config_entry.async_create_background_task(
+            self.hass, self._async_run_rescan(devices), f"{DOMAIN} zigbee rescan"
+        )
+        return "started"
+
+    async def _async_run_rescan(self, devices: list[str]) -> None:
+        try:
+            scanned = await async_scan_zha_devices(self.hass, devices)
+            self._rescan_status["scanned"] = scanned
+        except Exception as err:  # radio errors must not break the coordinator
+            _LOGGER.warning("Zigbee rescan failed: %s", err)
+            self._rescan_status["error"] = str(err)
+        finally:
+            self._rescan_running = False
+            self._rescan_status["finished"] = dt_util.now().isoformat()
+        await self.async_request_refresh()
 
     def _current_credentials(self) -> FritzCredentials:
         data = dict(self.config_entry.data)
@@ -123,4 +182,11 @@ class NetworkTopologyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             )
             add_zigbee(topo, zha_devices, host_id=host_id, radio_link=radio)
         # Bluetooth follows in step 4.
-        return topo.to_dict(generated=dt_util.now().isoformat())
+
+        self.topology = topo
+        if self.config_entry.options.get(CONF_AUTO_RESCAN, DEFAULT_AUTO_RESCAN):
+            self.async_start_rescan()
+
+        data = topo.to_dict(generated=dt_util.now().isoformat())
+        data["zigbee_rescan"] = {**self._rescan_status, "running": self._rescan_running}
+        return data

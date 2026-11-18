@@ -47,7 +47,19 @@ Als `tools/out/zha_devices.json` speichern und ausführen:
 python tools/zha_probe.py tools/out/zha_devices.json --mesh tools/out/mesh_raw.json --ha-ip <ip-von-home-assistant>
 ```
 
-ZHA liest die Tabellen in eigenen Abständen neu ein. Für frische Werte vorher in ZHA *Einstellungen → Visualisierung → Topologie aktualisieren* ausführen.
+ZHA liest die Tabellen alle 4 Stunden neu ein. Für frische Werte vorher in ZHA *Einstellungen → Visualisierung → Topologie aktualisieren* ausführen.
+
+### Gezielter Nachscan bei Widersprüchen
+
+Findet die Integration `route_conflict`-Verbindungen, liest sie die Tabellen der beteiligten Router neu ein. Beteiligt sind der Router, der das Gerät als Kind führt, der erste Hop der Koordinator-Route und der Koordinator selbst. Dafür nutzt sie den gezielten Scan von zigpy, also denselben Mechanismus wie *Topologie aktualisieren*, nur für wenige Geräte.
+
+- Höchstens ein automatischer Nachscan pro Stunde, jeder Router höchstens alle 6 Stunden.
+- Läuft gerade ein Scan von ZHA, wird nicht dazwischengefunkt.
+- Abschaltbar unter *Integration → Konfigurieren*.
+- Die Schaltfläche **Zigbee-Topologie prüfen** startet sofort einen Scan, ohne Drosselung. Gibt es keine Widersprüche, scannt sie alle Router.
+- Der Stand steht in der WebSocket-Antwort unter `zigbee_rescan`.
+
+Ein Nachscan räumt veraltete Router-Tabellen auf, erzwingt aber keine neuen Routen. Die Route des Koordinators zu einem schlafenden End Device ändert sich erst, wenn er wieder Daten an das Gerät schickt.
 
 ## Installation in Home Assistant
 
