@@ -17,6 +17,9 @@ DEFAULT_HOST = "192.168.178.1"
 DEFAULT_SCAN_INTERVAL = 60  # seconds
 DEFAULT_MIN_SWITCH_DEVICES = 2
 
+CARD_URL_BASE = f"/{DOMAIN}_static"
+CARD_FILE = "network-topology-card.js"
+
 WS_GET = f"{DOMAIN}/get"
 WS_SUBSCRIBE = f"{DOMAIN}/subscribe"
 WS_DEBUG = f"{DOMAIN}/debug_sources"

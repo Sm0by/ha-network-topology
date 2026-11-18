@@ -1,0 +1,785 @@
+{
+ "generated": "2026-11-18T14:30:00+01:00",
+ "nodes": [
+  {
+   "id": "mac:c8:0e:14:00:00:01",
+   "name": "fritz.box",
+   "kind": "router",
+   "layers": [
+    "lan",
+    "wlan"
+   ],
+   "mac": "c8:0e:14:00:00:01",
+   "online": true,
+   "model": "FRITZ!Box 7590",
+   "sources": [
+    "fritz"
+   ],
+   "attrs": {
+    "mesh_role": "master",
+    "firmware": "154.08.02"
+   }
+  },
+  {
+   "id": "mac:c8:0e:14:00:00:02",
+   "name": "FRITZ!Repeater",
+   "kind": "repeater",
+   "layers": [
+    "wlan"
+   ],
+   "mac": "c8:0e:14:00:00:02",
+   "ip": "192.168.178.25",
+   "online": true,
+   "sources": [
+    "fritz"
+   ],
+   "attrs": {
+    "mesh_role": "slave"
+   }
+  },
+  {
+   "id": "mac:3c:22:fb:10:4e:a1",
+   "name": "Desktop-PC",
+   "kind": "client",
+   "layers": [
+    "lan"
+   ],
+   "mac": "3c:22:fb:10:4e:a1",
+   "ip": "192.168.178.31",
+   "online": true,
+   "sources": [
+    "fritz"
+   ]
+  },
+  {
+   "id": "mac:00:11:32:af:09:5e",
+   "name": "NAS",
+   "kind": "client",
+   "layers": [
+    "lan"
+   ],
+   "mac": "00:11:32:af:09:5e",
+   "online": true,
+   "sources": [
+    "fritz"
+   ]
+  },
+  {
+   "id": "mac:d8:3a:dd:41:7c:02",
+   "name": "homeassistant",
+   "kind": "client",
+   "layers": [
+    "lan",
+    "bluetooth"
+   ],
+   "mac": "d8:3a:dd:41:7c:02",
+   "ip": "192.168.178.20",
+   "online": true,
+   "sources": [
+    "fritz",
+    "bluetooth"
+   ],
+   "attrs": {
+    "home_assistant": true,
+    "bluetooth_scanners": [
+     {
+      "source": "D8:3A:DD:41:7C:03",
+      "name": "hci0",
+      "connectable": true,
+      "local": true
+     }
+    ]
+   }
+  },
+  {
+   "id": "mac:a8:23:fe:6c:12:90",
+   "name": "Fernseher",
+   "kind": "client",
+   "layers": [
+    "lan"
+   ],
+   "mac": "a8:23:fe:6c:12:90",
+   "online": true,
+   "sources": [
+    "fritz"
+   ]
+  },
+  {
+   "id": "mac:70:9e:29:44:b1:0c",
+   "name": "Spielkonsole",
+   "kind": "client",
+   "layers": [
+    "lan"
+   ],
+   "mac": "70:9e:29:44:b1:0c",
+   "ip": "192.168.178.53",
+   "online": false,
+   "sources": [
+    "fritz"
+   ]
+  },
+  {
+   "id": "mac:00:1b:a9:77:01:02",
+   "name": "Drucker",
+   "kind": "client",
+   "layers": [
+    "lan"
+   ],
+   "mac": "00:1b:a9:77:01:02",
+   "online": true,
+   "sources": [
+    "fritz"
+   ]
+  },
+  {
+   "id": "mac:5a:11:22:33:44:55",
+   "name": "Smartphone",
+   "kind": "client",
+   "layers": [
+    "wlan"
+   ],
+   "mac": "5a:11:22:33:44:55",
+   "online": true,
+   "sources": [
+    "fritz"
+   ]
+  },
+  {
+   "id": "mac:5a:11:22:33:44:56",
+   "name": "Tablet",
+   "kind": "client",
+   "layers": [
+    "wlan"
+   ],
+   "mac": "5a:11:22:33:44:56",
+   "online": true,
+   "sources": [
+    "fritz"
+   ]
+  },
+  {
+   "id": "mac:5a:11:22:33:44:57",
+   "name": "Laptop",
+   "kind": "client",
+   "layers": [
+    "wlan"
+   ],
+   "mac": "5a:11:22:33:44:57",
+   "online": true,
+   "sources": [
+    "fritz"
+   ]
+  },
+  {
+   "id": "mac:fa:ce:14:00:00:01",
+   "name": "Switch an LAN4",
+   "kind": "passive_switch",
+   "layers": [
+    "lan"
+   ],
+   "online": true,
+   "sources": [
+    "fritz"
+   ],
+   "attrs": {
+    "detected_by": "fritz",
+    "uplink": "fritz.box:LAN4"
+   }
+  },
+  {
+   "id": "mac:30:5a:3a:00:00:a1",
+   "name": "Tower-PC",
+   "kind": "client",
+   "layers": [
+    "lan"
+   ],
+   "mac": "30:5a:3a:00:00:a1",
+   "online": true,
+   "sources": [
+    "fritz"
+   ]
+  },
+  {
+   "id": "mac:50:3e:aa:00:00:a2",
+   "name": "Server-PC",
+   "kind": "client",
+   "layers": [
+    "lan"
+   ],
+   "mac": "50:3e:aa:00:00:a2",
+   "online": true,
+   "sources": [
+    "fritz"
+   ]
+  },
+  {
+   "id": "mac:24:0a:c4:9b:11:02",
+   "name": "bt-proxy-kueche",
+   "kind": "client",
+   "layers": [
+    "wlan",
+    "bluetooth"
+   ],
+   "mac": "24:0a:c4:9b:11:02",
+   "online": true,
+   "sources": [
+    "fritz",
+    "bluetooth"
+   ],
+   "attrs": {
+    "bluetooth_scanners": [
+     {
+      "source": "24:0A:C4:9B:11:04",
+      "name": "bt-proxy-kueche",
+      "connectable": true,
+      "local": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "internet",
+   "name": "Internet",
+   "kind": "internet",
+   "layers": [
+    "lan"
+   ],
+   "online": true
+  },
+  {
+   "id": "mac:5a:11:22:33:44:99",
+   "name": "Alter-Laptop",
+   "kind": "client",
+   "layers": [
+    "wlan"
+   ],
+   "mac": "5a:11:22:33:44:99",
+   "ip": "192.168.178.80",
+   "online": false,
+   "sources": [
+    "fritz_hosts"
+   ]
+  },
+  {
+   "id": "switch:c80e14000001_lan1",
+   "name": "Switch an LAN1",
+   "kind": "passive_switch",
+   "layers": [
+    "lan"
+   ],
+   "online": true,
+   "sources": [
+    "inferred"
+   ],
+   "attrs": {
+    "uplink": "fritz.box:LAN1",
+    "inferred_from_devices": 3
+   }
+  },
+  {
+   "id": "switch:c80e14000001_lan2",
+   "name": "Switch an LAN2",
+   "kind": "passive_switch",
+   "layers": [
+    "lan"
+   ],
+   "online": true,
+   "sources": [
+    "inferred"
+   ],
+   "attrs": {
+    "uplink": "fritz.box:LAN2",
+    "inferred_from_devices": 2
+   }
+  },
+  {
+   "id": "zigbee:00:12:4b:00:00:00:00:01",
+   "name": "Texas Instruments ZBT",
+   "kind": "zigbee_coordinator",
+   "layers": [
+    "zigbee"
+   ],
+   "online": true,
+   "model": "SkyConnect",
+   "sources": [
+    "zha"
+   ],
+   "attrs": {
+    "ieee": "00:12:4b:00:00:00:00:01",
+    "nwk": "0x0000"
+   }
+  },
+  {
+   "id": "zigbee:00:17:88:00:00:00:00:11",
+   "name": "Steckdose Flur",
+   "kind": "zigbee_router",
+   "layers": [
+    "zigbee"
+   ],
+   "online": true,
+   "sources": [
+    "zha"
+   ],
+   "attrs": {
+    "ieee": "00:17:88:00:00:00:00:11",
+    "nwk": "0x1111",
+    "area_id": "flur",
+    "lqi": 230,
+    "ha_device_id": "dev-r1"
+   }
+  },
+  {
+   "id": "zigbee:00:17:88:00:00:00:00:22",
+   "name": "Deckenlampe WZ",
+   "kind": "zigbee_router",
+   "layers": [
+    "zigbee"
+   ],
+   "online": true,
+   "sources": [
+    "zha"
+   ],
+   "attrs": {
+    "ieee": "00:17:88:00:00:00:00:22",
+    "nwk": "0x2222"
+   }
+  },
+  {
+   "id": "zigbee:00:17:88:00:00:00:00:33",
+   "name": "Lampe Keller",
+   "kind": "zigbee_router",
+   "layers": [
+    "zigbee"
+   ],
+   "online": true,
+   "sources": [
+    "zha"
+   ],
+   "attrs": {
+    "ieee": "00:17:88:00:00:00:00:33",
+    "nwk": "0x3333"
+   }
+  },
+  {
+   "id": "zigbee:00:15:8d:00:00:00:00:e1",
+   "name": "Bewegung Flur",
+   "kind": "zigbee_end_device",
+   "layers": [
+    "zigbee"
+   ],
+   "online": true,
+   "sources": [
+    "zha"
+   ],
+   "attrs": {
+    "ieee": "00:15:8d:00:00:00:00:e1",
+    "nwk": "0xE111",
+    "power_source": "Battery or Unknown"
+   }
+  },
+  {
+   "id": "zigbee:00:15:8d:00:00:00:00:e2",
+   "name": "Temperatur Bad",
+   "kind": "zigbee_end_device",
+   "layers": [
+    "zigbee"
+   ],
+   "online": true,
+   "sources": [
+    "zha"
+   ],
+   "attrs": {
+    "ieee": "00:15:8d:00:00:00:00:e2",
+    "nwk": "0xE222"
+   }
+  },
+  {
+   "id": "zigbee:00:15:8d:00:00:00:00:e3",
+   "name": "Fenster Küche",
+   "kind": "zigbee_end_device",
+   "layers": [
+    "zigbee"
+   ],
+   "online": false,
+   "sources": [
+    "zha"
+   ],
+   "attrs": {
+    "ieee": "00:15:8d:00:00:00:00:e3",
+    "nwk": "0xE333",
+    "lqi": 80
+   }
+  },
+  {
+   "id": "zigbee:00:15:8d:00:00:00:00:e4",
+   "name": "Taster Bett",
+   "kind": "zigbee_end_device",
+   "layers": [
+    "zigbee"
+   ],
+   "online": true,
+   "sources": [
+    "zha"
+   ],
+   "attrs": {
+    "ieee": "00:15:8d:00:00:00:00:e4",
+    "nwk": "0xE444"
+   }
+  },
+  {
+   "id": "ble:a4:c1:38:2d:90:5b",
+   "name": "Thermometer Küche",
+   "kind": "bluetooth_device",
+   "layers": [
+    "bluetooth"
+   ],
+   "online": true,
+   "sources": [
+    "bluetooth"
+   ],
+   "attrs": {
+    "bluetooth_address": "A4:C1:38:2D:90:5B",
+    "ha_device_id": "demo",
+    "heard_by": [
+     {
+      "node": "mac:24:0a:c4:9b:11:02",
+      "rssi": -64
+     },
+     {
+      "node": "mac:d8:3a:dd:41:7c:02",
+      "rssi": -91
+     }
+    ]
+   }
+  },
+  {
+   "id": "ble:c4:7c:8d:6a:3f:21",
+   "name": "Pflanzensensor",
+   "kind": "bluetooth_device",
+   "layers": [
+    "bluetooth"
+   ],
+   "online": true,
+   "sources": [
+    "bluetooth"
+   ],
+   "attrs": {
+    "bluetooth_address": "C4:7C:8D:6A:3F:21",
+    "heard_by": [
+     {
+      "node": "mac:d8:3a:dd:41:7c:02",
+      "rssi": -84
+     }
+    ]
+   }
+  },
+  {
+   "id": "ble:b0:d2:78:11:4c:e7",
+   "name": "Zahnbürste",
+   "kind": "bluetooth_device",
+   "layers": [
+    "bluetooth"
+   ],
+   "online": false,
+   "sources": [
+    "bluetooth"
+   ],
+   "attrs": {
+    "bluetooth_address": "B0:D2:78:11:4C:E7",
+    "heard_by": []
+   }
+  }
+ ],
+ "links": [
+  {
+   "source": "internet",
+   "target": "mac:c8:0e:14:00:00:01",
+   "layer": "wan",
+   "connected": true
+  },
+  {
+   "source": "switch:c80e14000001_lan1",
+   "target": "mac:3c:22:fb:10:4e:a1",
+   "layer": "lan",
+   "rate_kbit": 1000000,
+   "connected": true,
+   "attrs": {
+    "interface": "LAN:1",
+    "via_port": "LAN1"
+   }
+  },
+  {
+   "source": "switch:c80e14000001_lan1",
+   "target": "mac:00:11:32:af:09:5e",
+   "layer": "lan",
+   "connected": true,
+   "attrs": {
+    "interface": "LAN:1",
+    "via_port": "LAN1"
+   }
+  },
+  {
+   "source": "switch:c80e14000001_lan1",
+   "target": "mac:d8:3a:dd:41:7c:02",
+   "layer": "lan",
+   "connected": true,
+   "attrs": {
+    "interface": "LAN:1",
+    "via_port": "LAN1"
+   }
+  },
+  {
+   "source": "switch:c80e14000001_lan2",
+   "target": "mac:a8:23:fe:6c:12:90",
+   "layer": "lan",
+   "connected": true,
+   "attrs": {
+    "interface": "LAN:2",
+    "via_port": "LAN2"
+   }
+  },
+  {
+   "source": "switch:c80e14000001_lan2",
+   "target": "mac:70:9e:29:44:b1:0c",
+   "layer": "lan",
+   "connected": false,
+   "attrs": {
+    "interface": "LAN:2",
+    "via_port": "LAN2"
+   }
+  },
+  {
+   "source": "mac:c8:0e:14:00:00:01",
+   "target": "mac:00:1b:a9:77:01:02",
+   "layer": "lan",
+   "port": "LAN3",
+   "connected": true,
+   "attrs": {
+    "interface": "LAN:3"
+   }
+  },
+  {
+   "source": "mac:c8:0e:14:00:00:01",
+   "target": "mac:fa:ce:14:00:00:01",
+   "layer": "lan",
+   "port": "LAN4",
+   "connected": true,
+   "attrs": {
+    "interface": "LAN:4"
+   }
+  },
+  {
+   "source": "mac:c8:0e:14:00:00:01",
+   "target": "mac:c8:0e:14:00:00:02",
+   "layer": "wlan",
+   "band": "5",
+   "rssi": -55,
+   "connected": true,
+   "attrs": {
+    "ssid": "Heimnetz",
+    "interface": "AP:5G:0"
+   }
+  },
+  {
+   "source": "mac:c8:0e:14:00:00:01",
+   "target": "mac:5a:11:22:33:44:55",
+   "layer": "wlan",
+   "band": "5",
+   "rssi": -49,
+   "connected": true,
+   "attrs": {
+    "ssid": "Heimnetz",
+    "interface": "AP:5G:0"
+   }
+  },
+  {
+   "source": "mac:c8:0e:14:00:00:01",
+   "target": "mac:5a:11:22:33:44:56",
+   "layer": "wlan",
+   "band": "2.4",
+   "rssi": -66,
+   "connected": true,
+   "attrs": {
+    "ssid": "Heimnetz",
+    "interface": "AP:2G:0"
+   }
+  },
+  {
+   "source": "mac:c8:0e:14:00:00:02",
+   "target": "mac:5a:11:22:33:44:57",
+   "layer": "wlan",
+   "band": "5",
+   "rssi": -61,
+   "connected": true,
+   "attrs": {
+    "interface": "AP:5G:0"
+   }
+  },
+  {
+   "source": "mac:c8:0e:14:00:00:02",
+   "target": "mac:24:0a:c4:9b:11:02",
+   "layer": "wlan",
+   "band": "2.4",
+   "rssi": -58,
+   "connected": true,
+   "attrs": {
+    "interface": "AP:2G:0"
+   }
+  },
+  {
+   "source": "mac:fa:ce:14:00:00:01",
+   "target": "mac:30:5a:3a:00:00:a1",
+   "layer": "lan",
+   "connected": true
+  },
+  {
+   "source": "mac:fa:ce:14:00:00:01",
+   "target": "mac:50:3e:aa:00:00:a2",
+   "layer": "lan",
+   "connected": true
+  },
+  {
+   "source": "mac:c8:0e:14:00:00:01",
+   "target": "switch:c80e14000001_lan1",
+   "layer": "lan",
+   "port": "LAN1",
+   "connected": true
+  },
+  {
+   "source": "mac:c8:0e:14:00:00:01",
+   "target": "switch:c80e14000001_lan2",
+   "layer": "lan",
+   "port": "LAN2",
+   "connected": true
+  },
+  {
+   "source": "mac:d8:3a:dd:41:7c:02",
+   "target": "zigbee:00:12:4b:00:00:00:00:01",
+   "layer": "usb",
+   "connected": true,
+   "attrs": {
+    "radio": "usb"
+   }
+  },
+  {
+   "source": "zigbee:00:17:88:00:00:00:00:11",
+   "target": "zigbee:00:15:8d:00:00:00:00:e1",
+   "layer": "zigbee",
+   "lqi": 180,
+   "connected": true,
+   "attrs": {
+    "parent": "neighbors"
+   }
+  },
+  {
+   "source": "zigbee:00:17:88:00:00:00:00:22",
+   "target": "zigbee:00:15:8d:00:00:00:00:e2",
+   "layer": "zigbee",
+   "lqi": 120,
+   "connected": true,
+   "attrs": {
+    "parent": "neighbors"
+   }
+  },
+  {
+   "source": "zigbee:00:12:4b:00:00:00:00:01",
+   "target": "zigbee:00:15:8d:00:00:00:00:e3",
+   "layer": "zigbee",
+   "lqi": 80,
+   "connected": false,
+   "attrs": {
+    "parent": "unknown"
+   }
+  },
+  {
+   "source": "zigbee:00:12:4b:00:00:00:00:01",
+   "target": "zigbee:00:15:8d:00:00:00:00:e4",
+   "layer": "zigbee",
+   "lqi": 150,
+   "connected": true,
+   "attrs": {
+    "parent": "neighbors"
+   }
+  },
+  {
+   "source": "zigbee:00:12:4b:00:00:00:00:01",
+   "target": "zigbee:00:17:88:00:00:00:00:11",
+   "layer": "zigbee",
+   "lqi": 230,
+   "connected": true,
+   "attrs": {
+    "parent": "route"
+   }
+  },
+  {
+   "source": "zigbee:00:17:88:00:00:00:00:11",
+   "target": "zigbee:00:17:88:00:00:00:00:22",
+   "layer": "zigbee",
+   "lqi": 170,
+   "connected": true,
+   "attrs": {
+    "parent": "route"
+   }
+  },
+  {
+   "source": "zigbee:00:12:4b:00:00:00:00:01",
+   "target": "zigbee:00:17:88:00:00:00:00:33",
+   "layer": "zigbee",
+   "lqi": 60,
+   "connected": true,
+   "attrs": {
+    "parent": "neighbors"
+   }
+  },
+  {
+   "source": "mac:24:0a:c4:9b:11:02",
+   "target": "ble:a4:c1:38:2d:90:5b",
+   "layer": "bluetooth",
+   "rssi": -64,
+   "connected": true
+  },
+  {
+   "source": "mac:d8:3a:dd:41:7c:02",
+   "target": "ble:c4:7c:8d:6a:3f:21",
+   "layer": "bluetooth",
+   "rssi": -84,
+   "connected": true
+  },
+  {
+   "source": "mac:24:0a:c4:9b:11:02",
+   "target": "ble:b0:d2:78:11:4c:e7",
+   "layer": "bluetooth",
+   "connected": false
+  }
+ ],
+ "mesh": [
+  {
+   "source": "zigbee:00:12:4b:00:00:00:00:01",
+   "target": "zigbee:00:17:88:00:00:00:00:22",
+   "layer": "zigbee",
+   "lqi": 90,
+   "connected": true
+  },
+  {
+   "source": "zigbee:00:17:88:00:00:00:00:22",
+   "target": "zigbee:00:17:88:00:00:00:00:33",
+   "layer": "zigbee",
+   "lqi": 200,
+   "connected": true
+  },
+  {
+   "source": "mac:d8:3a:dd:41:7c:02",
+   "target": "ble:a4:c1:38:2d:90:5b",
+   "layer": "bluetooth",
+   "rssi": -91,
+   "connected": true
+  }
+ ],
+ "unlinked": [
+  "mac:5a:11:22:33:44:99"
+ ],
+ "warnings": [],
+ "zigbee_rescan": {
+  "running": false
+ }
+}

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Network Topology Card – Harness</title>
+<style>
+  /* Minimal stand-in for Home Assistant's theme variables. */
+  :root {
+    --primary-color: #03a9f4; --primary-text-color: #212121; --secondary-text-color: #727272;
+    --divider-color: rgba(0,0,0,.12); --card-background-color: #fff; --secondary-background-color: #f4f6f8;
+    --warning-color: #ff9800; --error-color: #db4437; --code-font-family: Consolas, monospace;
+  }
+  :root.dark {
+    --primary-text-color: #e1e1e1; --secondary-text-color: #9b9b9b; --divider-color: rgba(225,225,225,.12);
+    --card-background-color: #1c1c1c; --secondary-background-color: #111;
+  }
+  body { margin: 0; padding: 16px; background: var(--secondary-background-color); font-family: Roboto, system-ui, sans-serif; }
+  .bar { display: flex; gap: 12px; margin-bottom: 12px; font-size: 14px; color: var(--primary-text-color); }
+</style>
+<script>
+  // ha-card stand-in
+  customElements.define("ha-card", class extends HTMLElement {
+    connectedCallback() {
+      this.style.cssText = "display:block;background:var(--card-background-color);border-radius:12px;border:1px solid var(--divider-color);";
+    }
+  });
+</script>
+<script src="../custom_components/network_topology/www/network-topology-card.js"></script>
+</head>
+<body>
+<div class="bar">
+  <label><input type="checkbox" id="dark"> dunkel</label>
+  <span id="src"></span>
+</div>
+<network-topology-card id="card"></network-topology-card>
+<script>
+  const params = new URLSearchParams(location.search);
+  const url = params.get("data") === "real" ? "../tools/out/topology_full.json" : "sample_topology.json";
+  document.getElementById("src").textContent = "Daten: " + url;
+  document.getElementById("dark").addEventListener("change", (e) => document.documentElement.classList.toggle("dark", e.target.checked));
+  const card = document.getElementById("card");
+  card.setConfig({ height: 620 });
+  card.hass = {
+    language: "de",
+    connection: {
+      subscribeMessage(cb) {
+        fetch(url).then((r) => r.json()).then(cb);
+        return Promise.resolve(() => {});
+      },
+    },
+  };
+</script>
+</body>
+</html>

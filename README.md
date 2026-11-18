@@ -19,7 +19,7 @@ Die Daten stehen über die WebSocket-API bereit und werden später von der Lovel
 | 2 | Switch-Ableitung + YAML | fertig, mit echten Daten geprüft |
 | 3 | ZHA-Collector, Zigbee-Baum | fertig, mit echten ZHA-Daten geprüft (46 Geräte) |
 | 4 | Bluetooth-Collector, Zusammenführung über MAC | fertig (Unit-Tests), wartet auf Test in HA |
-| 5 | Lovelace-Karte | offen |
+| 5 | Lovelace-Karte | fertig, im Browser mit echten LAN- und Zigbee-Daten geprüft, wartet auf Test in HA |
 | 6 | Sensoren, HACS-Paket | offen |
 
 ## Erst prüfen: liefert die FRITZ!Box die LAN-Ports?
@@ -71,6 +71,33 @@ Ein Nachscan räumt veraltete Router-Tabellen auf, erzwingt aber keine neuen Rou
 4. Optional `network_topology.example.yaml` als `/config/network_topology.yaml` anlegen.
 
 Der FRITZ!Box-Benutzer braucht das Recht „FRITZ!Box Einstellungen“.
+
+## Karte
+
+Die Integration liefert die Lovelace-Karte selbst aus und meldet sie im Frontend an. Eine Ressource musst du nicht eintragen. Im Dashboard *Karte hinzufügen → Network Topology* wählen oder per YAML:
+
+```yaml
+type: custom:network-topology-card
+title: Netzwerk            # optional
+height: 600                # Höhe der Zeichenfläche in px
+layers: [lan, wlan, zigbee, bluetooth]
+show_mesh: false           # zusätzliche Funkverbindungen außerhalb des Baums
+hide_offline: false
+warn_lqi_below: 100
+warn_rssi_below: -80
+collapsed: []              # Knoten-IDs, die beim Start zugeklappt sind
+```
+
+Funktionen:
+
+- **Baum** von links nach rechts mit Linienstil je Verbindungsart: LAN durchgezogen, WLAN gestrichelt, Zigbee gepunktet, Bluetooth Strich-Punkt.
+- **Beschriftung** je Verbindung: Port, Band und RSSI, LQI.
+- **Bedienung:** Ebenen-Filter, Teilbäume auf- und zuklappen (− / +N am Knoten), Zoomen mit Mausrad, Verschieben durch Ziehen, Suche nach Name, IP oder MAC.
+- **Detailpanel** mit Werten, Datenquelle, Weg zum Internet und Link zur HA-Geräteseite.
+- **Warnungen:** offline, schwaches LQI oder RSSI, `route_conflict` (rot), unbekannter Parent.
+- **Hinweise:** Warnungen der Integration und Geräte ohne Verbindung unten in der Karte.
+
+Ohne Home Assistant testen: `python dev/build_sample.py` erzeugt Beispieldaten. Danach im Repo-Ordner einen Webserver starten (`python -m http.server 8765`) und `http://localhost:8765/dev/harness.html` öffnen. Mit `?data=real` nutzt das Harness `tools/out/topology_full.json`, die `python dev/build_sample.py --real` aus den Probe-Exporten erzeugt.
 
 ## WebSocket-API
 
