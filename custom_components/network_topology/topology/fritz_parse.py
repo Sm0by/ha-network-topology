@@ -224,9 +224,10 @@ def parse_mesh(
 def _wan_link(router: str, wan: dict[str, Any] | None) -> Link:
     """Internet -> router, with sync rates and current throughput if known.
 
-    ``wan`` (bit/s): max_down, max_up (line sync), linked_down, linked_up
-    (what the line could do), rate_down, rate_up (current throughput),
-    connected.
+    ``wan`` (bit/s): max_down, max_up (line sync; port speed when the box
+    sits behind a modem on Ethernet), linked_down, linked_up (what the line
+    could do), rate_down, rate_up (current throughput), connected,
+    access_type (DSL, Ethernet, ...).
     """
     link = Link(source="internet", target=router, layer=WAN)
     if not wan:
@@ -240,6 +241,12 @@ def _wan_link(router: str, wan: dict[str, Any] | None) -> Link:
     link.rate_tx_kbit = kbit("max_up")
     linked = [v for v in (kbit("linked_down"), kbit("linked_up")) if v]
     link.max_rate_kbit = max(linked) if linked else None
+    synced = max((v for v in (link.rate_kbit, link.rate_tx_kbit) if v), default=0)
+    if link.max_rate_kbit and link.max_rate_kbit < synced:
+        # Ethernet/fibre/cable WAN: no line attainable rate, the value is junk.
+        link.max_rate_kbit = None
+    if access := wan.get("access_type"):
+        link.attrs["access_type"] = access
     for key in ("rate_down", "rate_up"):
         value = wan.get(key)
         if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= 0:

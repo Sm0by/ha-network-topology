@@ -17,7 +17,7 @@
  * No build step, no external libraries.
  */
 
-const CARD_VERSION = "0.3.0";
+const CARD_VERSION = "0.3.1";
 const NS = "http://www.w3.org/2000/svg";
 const NODE_W = 184;
 const NODE_H = 46;
@@ -54,7 +54,7 @@ const STRINGS = {
     },
     f: {
       kind: "Typ", ip: "IP", mac: "MAC", model: "Modell", manufacturer: "Hersteller", connection: "Verbindung",
-      rate: "Linkrate", rateMax: "Maximal", sync: "Sync-Rate", throughput: "Aktueller Durchsatz", lineMax: "Leitung möglich",
+      rate: "Linkrate", rateMax: "Maximal", sync: "Sync-Rate", throughput: "Aktueller Durchsatz", lineMax: "Leitung möglich", wanPort: "WAN-Port", access: "Anschluss",
       port: "Port", band: "Band", signal: "Signal", lqi: "LQI", ieee: "IEEE", nwk: "NWK", power: "Stromquelle",
       location: "Standort", detected: "Erkannt", sources: "Quellen", scanners: "Bluetooth-Scanner", heard: "Auch gehört von",
       firmware: "Firmware", lastSeen: "Zuletzt gesehen", parent: "Zuordnung",
@@ -207,6 +207,12 @@ function htmlEl(tag, props, parent) {
 }
 
 /** Current link rate in kbit/s: the faster direction (link rates are asymmetric on Wi-Fi). */
+// Behind a modem/ONT the FRITZ!Box reports its WAN port speed, not a line sync.
+function isPortWan(link) {
+  const access = link.attrs?.access_type;
+  return !!access && access !== "DSL";
+}
+
 function linkRate(l) {
   const v = [l?.rate_kbit, l?.rate_tx_kbit].filter((x) => typeof x === "number" && x > 0);
   return v.length ? Math.max(...v) : null;
@@ -659,10 +665,10 @@ class NetworkTopologyCard extends HTMLElement {
 
   _subLine(n, link) {
     const t = this._t;
+    if (n.attrs?.disabled) return t.disabled;
     if (n.kind === "passive_switch") return [t.kinds.passive_switch, n.attrs?.uplink?.split(":").pop()].filter(Boolean).join(" · ");
     if (n.kind?.startsWith("zigbee")) return [t.kinds[n.kind].replace("Zigbee-", "").replace("Zigbee ", ""), link?.lqi != null ? `LQI ${link.lqi}` : null].filter(Boolean).join(" · ");
     if (n.kind === "bluetooth_device") return ["BLE", link?.rssi != null ? `${link.rssi} dBm` : null].filter(Boolean).join(" · ");
-    if (n.attrs?.disabled) return t.disabled;
     if (n.online === false) return t.offline;
     if (this._showSpeeds && link && ["lan", "wlan"].includes(link.layer) && linkRate(link)) return [n.ip, rateLong(linkRate(link), this._hass.language)].filter(Boolean).join(" · ");
     return n.ip || n.model || t.kinds[n.kind] || "";
@@ -670,7 +676,11 @@ class NetworkTopologyCard extends HTMLElement {
 
   _edgeLabel(l) {
     const speed = this._showSpeeds ? rateShort(linkRate(l)) : null;
-    if (l.layer === "wan") return this._showSpeeds && l.rate_kbit ? `↓${rateShort(l.rate_kbit)} ↑${rateShort(l.rate_tx_kbit)}` : "";
+    if (l.layer === "wan") {
+      if (!this._showSpeeds || !l.rate_kbit) return "";
+      if (isPortWan(l) && l.rate_kbit === l.rate_tx_kbit) return rateShort(l.rate_kbit);
+      return `↓${rateShort(l.rate_kbit)} ↑${rateShort(l.rate_tx_kbit)}`;
+    }
     if (l.layer === "lan") return [l.port, speed].filter(Boolean).join(" · ");
     if (l.layer === "wlan") return [[l.band ? `${l.band.replace(".", ",")}G` : null, l.rssi != null ? `${l.rssi}` : null].filter(Boolean).join(" "), speed].filter(Boolean).join(" · ");
     if (l.layer === "zigbee" && l.lqi != null) return `LQI ${l.lqi}`;
@@ -833,7 +843,14 @@ class NetworkTopologyCard extends HTMLElement {
       if (link.lqi != null) add(t.f.lqi, link.lqi);
       const lang = this._hass.language;
       if (link.layer === "wan") {
-        if (link.rate_kbit) add(t.f.sync, `↓ ${rateLong(link.rate_kbit, lang)} · ↑ ${rateLong(link.rate_tx_kbit, lang)}`);
+        const access = link.attrs?.access_type;
+        if (access) add(t.f.access, String(access).replace(/^X_AVM-DE_/, ""));
+        if (link.rate_kbit) {
+          const port = isPortWan(link);
+          const value = port && link.rate_kbit === link.rate_tx_kbit ? rateLong(link.rate_kbit, lang)
+            : `↓ ${rateLong(link.rate_kbit, lang)} · ↑ ${rateLong(link.rate_tx_kbit, lang)}`;
+          add(port ? t.f.wanPort : t.f.sync, value);
+        }
         if (link.max_rate_kbit) add(t.f.lineMax, rateLong(link.max_rate_kbit, lang));
         const a2 = link.attrs || {};
         if (a2.rate_down_bps != null) add(t.f.throughput, `↓ ${rateLong(a2.rate_down_bps / 1000, lang)} · ↑ ${rateLong((a2.rate_up_bps || 0) / 1000, lang)}`);

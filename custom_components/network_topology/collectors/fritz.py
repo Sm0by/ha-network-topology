@@ -88,6 +88,11 @@ class FritzSource:
                 wan.update(linked_up=linked_up, linked_down=linked_down)
             except Exception:  # not offered by every line type
                 pass
+            try:  # DSL, Ethernet, X_AVM-DE_Fiber, X_AVM-DE_Cable, ...
+                props = fc.call_action("WANCommonInterfaceConfig1", "GetCommonLinkProperties")
+                wan["access_type"] = props.get("NewWANAccessType")
+            except Exception:  # noqa: BLE001
+                pass
             up_bytes, down_bytes = status.transmission_rate
             wan.update(rate_up=int(up_bytes) * 8, rate_down=int(down_bytes) * 8)
             return wan

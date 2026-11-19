@@ -53,6 +53,15 @@ class RateTests(unittest.TestCase):
         self.assertEqual((link.attrs["rate_down_bps"], link.attrs["rate_up_bps"]), (1_200_000, 0))
         self.assertTrue(link.connected)
 
+    def test_wan_ethernet_port_drops_junk_line_rate(self):
+        # FRITZ!Box behind a modem: 1 Gbit/s port speed, "linked" 1 Mbit/s is meaningless.
+        wan = {"max_down": 1_000_000_000, "max_up": 1_000_000_000, "linked_down": 1_000_000,
+               "linked_up": 1_000_000, "rate_down": 0, "rate_up": 0, "connected": True, "access_type": "Ethernet"}
+        link = mesh_topo(wan).parent_link(BOX)
+        self.assertEqual(link.rate_kbit, 1_000_000)
+        self.assertIsNone(link.max_rate_kbit)
+        self.assertEqual(link.attrs["access_type"], "Ethernet")
+
     def test_wan_disconnected_and_missing(self):
         self.assertFalse(mesh_topo({"max_down": 0, "max_up": 0, "connected": False}).parent_link(BOX).connected)
         link = mesh_topo(None).parent_link(BOX)
