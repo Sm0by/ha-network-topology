@@ -98,7 +98,9 @@ def _int_or_none(value: Any, *, negative: bool = False) -> int | None:
 
 
 def parse_mesh(
-    mesh: dict[str, Any], hosts: list[dict[str, Any]] | None = None
+    mesh: dict[str, Any],
+    hosts: list[dict[str, Any]] | None = None,
+    wan: dict[str, Any] | None = None,
 ) -> Topology:
     """Build the LAN/WLAN part of the topology."""
     topo = Topology()
@@ -187,7 +189,7 @@ def parse_mesh(
     if router := topo.router_id():
         topo.nodes[router].layers = [LAN, WLAN]
         topo.add_node(Node(id="internet", name="Internet", kind=INTERNET, layers=[LAN]))
-        topo.links.insert(0, Link(source="internet", target=router, layer=WAN))
+        topo.links.insert(0, _wan_link(router, wan))
     else:
         topo.warnings.append("Mesh topology contains no master (FRITZ!Box) node")
 
@@ -219,6 +221,34 @@ def parse_mesh(
     return topo
 
 
+def _wan_link(router: str, wan: dict[str, Any] | None) -> Link:
+    """Internet -> router, with sync rates and current throughput if known.
+
+    ``wan`` (bit/s): max_down, max_up (line sync), linked_down, linked_up
+    (what the line could do), rate_down, rate_up (current throughput),
+    connected.
+    """
+    link = Link(source="internet", target=router, layer=WAN)
+    if not wan:
+        return link
+
+    def kbit(key: str) -> int | None:
+        bps = _int_or_none(wan.get(key))
+        return bps // 1000 if bps else None
+
+    link.rate_kbit = kbit("max_down")
+    link.rate_tx_kbit = kbit("max_up")
+    linked = [v for v in (kbit("linked_down"), kbit("linked_up")) if v]
+    link.max_rate_kbit = max(linked) if linked else None
+    for key in ("rate_down", "rate_up"):
+        value = wan.get(key)
+        if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= 0:
+            link.attrs[f"{key}_bps"] = int(value)
+    if wan.get("connected") is False:
+        link.connected = False
+    return link
+
+
 def _build_link(
     raw: dict[str, Any],
     node_ids: dict[str, str],
@@ -247,7 +277,10 @@ def _build_link(
         connected=(raw.get("state") or "CONNECTED").upper() == "CONNECTED",
         rate_kbit=_int_or_none(raw.get("cur_data_rate_rx"))
         or _int_or_none(raw.get("max_data_rate_rx")),
+        rate_tx_kbit=_int_or_none(raw.get("cur_data_rate_tx")),
     )
+    maxes = [v for v in (_int_or_none(raw.get("max_data_rate_rx")), _int_or_none(raw.get("max_data_rate_tx"))) if v]
+    link.max_rate_kbit = max(maxes) if maxes else None
     if layer == WLAN:
         link.band = wlan_band(iface_name)
         # Older FRITZ!OS: rx_rssi. FRITZ!OS 8: rx_rcpi in dBm, 255 = not available.

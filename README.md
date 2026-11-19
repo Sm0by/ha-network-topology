@@ -84,6 +84,7 @@ layout: horizontal         # oder "vertical": von oben nach unten, besser auf br
 layers: [lan, wlan, zigbee, bluetooth]
 show_mesh: false           # zusätzliche Funkverbindungen außerhalb des Baums
 hide_offline: false
+show_speeds: false         # Linkraten als Beschriftung und Linienstärke (auch per Schalter)
 warn_lqi_below: 100
 warn_rssi_below: -80
 collapsed: []              # Knoten-IDs, die beim Start zugeklappt sind
@@ -96,6 +97,8 @@ Funktionen:
 - **Bedienung:** Ebenen-Filter, Teilbäume auf- und zuklappen (− / +N am Knoten), Zoomen mit Mausrad, Verschieben durch Ziehen, Suche nach Name, IP oder MAC.
 - **Detailpanel** mit Werten, Datenquelle, Weg zum Internet und Link zur HA-Geräteseite.
 - **Warnungen:** offline, schwaches LQI oder RSSI, `route_conflict` (rot), unbekannter Parent.
+- **Geschwindigkeit:** LAN- und WLAN-Linkraten aus der Mesh-Topologie der FRITZ!Box, für WAN Sync-Rate, mögliche Leitungsrate und aktueller Durchsatz. Der Schalter blendet sie als Beschriftung ein und macht schnelle Verbindungen dicker. Die Details stehen immer im Detailpanel.
+- **Deaktivierte Geräte:** In HA deaktivierte Geräte erscheinen grau ohne Warnung und lösen keinen Zigbee-Nachscan aus. Sind sie offline, etwa eine ausgesteckte Steckdose, blendet die Karte sie aus.
 - **Hinweise:** Warnungen der Integration und Geräte ohne Verbindung unten in der Karte.
 
 Ohne Home Assistant testen: `python dev/build_sample.py` erzeugt Beispieldaten. Danach im Repo-Ordner einen Webserver starten (`python -m http.server 8765`) und `http://localhost:8765/dev/harness.html` öffnen. Mit `?data=real` nutzt das Harness `tools/out/topology_full.json`, die `python dev/build_sample.py --real` aus den Probe-Exporten erzeugt.

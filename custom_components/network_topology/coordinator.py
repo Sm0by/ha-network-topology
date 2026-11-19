@@ -156,7 +156,7 @@ class NetworkTopologyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Each source may fail on its own; the others still produce a graph.
         fritz_error: str | None = None
         try:
-            mesh, hosts = await self.hass.async_add_executor_job(self._fritz.fetch)
+            mesh, hosts, wan = await self.hass.async_add_executor_job(self._fritz.fetch)
         except FritzAuthorizationError as err:
             fritz_error = f"FRITZ!Box rejected the login: {err}"
         except (FritzConnectionException, OSError) as err:
@@ -170,7 +170,7 @@ class NetworkTopologyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             except (OSError, yaml.YAMLError) as err:
                 _LOGGER.warning("Could not read %s: %s", CONFIG_FILE, err)
                 raw_config = None
-            topo = parse_mesh(mesh, hosts)
+            topo = parse_mesh(mesh, hosts, wan)
             configs, config_warnings = load_config(raw_config)
             topo.warnings.extend(config_warnings)
             apply_switches(topo, configs, min_devices=DEFAULT_MIN_SWITCH_DEVICES)

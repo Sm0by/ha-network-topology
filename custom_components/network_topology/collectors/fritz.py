@@ -6,10 +6,14 @@ All methods are blocking and must run in the executor.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 from typing import Any
 
 from fritzconnection import FritzConnection
 from fritzconnection.lib.fritzhosts import FritzHosts
+from fritzconnection.lib.fritzstatus import FritzStatus
+
+_LOGGER = logging.getLogger(__name__)
 
 TIMEOUT = 15
 
@@ -54,12 +58,39 @@ class FritzSource:
             self._hosts = None
             raise
 
-    def fetch(self) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-        """Return (mesh topology, host list)."""
+    def fetch(self) -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, Any] | None]:
+        """Return (mesh topology, host list, WAN status)."""
         try:
             hosts = self._connect()
-            return hosts.get_mesh_topology(), hosts.get_hosts_info()
+            mesh, host_list = hosts.get_mesh_topology(), hosts.get_hosts_info()
         except Exception:
             # Drop the connection so the next update reconnects cleanly.
             self._hosts = None
             raise
+        return mesh, host_list, self._fetch_wan(hosts.fc)
+
+    @staticmethod
+    def _fetch_wan(fc: FritzConnection) -> dict[str, Any] | None:
+        """Sync rates and current throughput of the internet line (bit/s).
+
+        Optional: a failure here must not cost the LAN/WLAN data.
+        """
+        try:
+            status = FritzStatus(fc=fc)
+            max_up, max_down = status.max_bit_rate
+            wan: dict[str, Any] = {
+                "max_up": max_up,
+                "max_down": max_down,
+                "connected": bool(status.is_connected),
+            }
+            try:
+                linked_up, linked_down = status.max_linked_bit_rate
+                wan.update(linked_up=linked_up, linked_down=linked_down)
+            except Exception:  # not offered by every line type
+                pass
+            up_bytes, down_bytes = status.transmission_rate
+            wan.update(rate_up=int(up_bytes) * 8, rate_down=int(down_bytes) * 8)
+            return wan
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.debug("WAN status not available: %s", err)
+            return None

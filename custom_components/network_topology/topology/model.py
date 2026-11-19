@@ -63,7 +63,9 @@ class Link:
     port: str | None = None
     band: str | None = None
     rssi: int | None = None
-    rate_kbit: int | None = None
+    rate_kbit: int | None = None  # current link rate (rx side as reported)
+    rate_tx_kbit: int | None = None  # current link rate, other direction
+    max_rate_kbit: int | None = None  # what the link could do
     lqi: int | None = None
     connected: bool = True
     attrs: dict[str, Any] = field(default_factory=dict)

@@ -157,6 +157,8 @@ def add_zigbee(
                 attrs[key] = val
         if dev.get("device_reg_id"):
             attrs["ha_device_id"] = dev["device_reg_id"]
+        if dev.get("disabled"):
+            attrs["disabled"] = True
         topo.add_node(
             Node(
                 id=node_id(ieee),

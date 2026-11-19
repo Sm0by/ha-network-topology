@@ -73,6 +73,8 @@ def enrich_from_registry(topo: Topology, registry: dict[str, dict[str, Any]]) ->
         if not node.mac or (entry := registry.get(node.mac)) is None:
             continue
         node.attrs.setdefault("ha_device_id", entry.get("ha_device_id"))
+        if entry.get("disabled"):
+            node.attrs["disabled"] = True
         if entry.get("area_id"):
             node.attrs.setdefault("area_id", entry["area_id"])
         if entry.get("name_by_user"):

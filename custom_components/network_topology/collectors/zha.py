@@ -12,6 +12,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import device_registry as dr
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -44,6 +45,7 @@ def async_get_zha_devices(hass: HomeAssistant) -> list[dict[str, Any]] | None:
         _LOGGER.debug("ZHA gateway not available: %s", err)
         return None
 
+    registry = dr.async_get(hass)
     devices: list[dict[str, Any]] = []
     for device_proxy in list(proxy.device_proxies.values()):
         try:
@@ -51,6 +53,8 @@ def async_get_zha_devices(hass: HomeAssistant) -> list[dict[str, Any]] | None:
         except Exception:  # one broken device must not hide the others
             _LOGGER.debug("Skipping ZHA device %s", device_proxy, exc_info=True)
             continue
+        reg_id = info.get("device_reg_id")
+        reg_device = registry.async_get(reg_id) if reg_id else None
         devices.append(
             {
                 "ieee": _plain(info.get("ieee")),
@@ -66,7 +70,9 @@ def async_get_zha_devices(hass: HomeAssistant) -> list[dict[str, Any]] | None:
                 "rssi": _plain(info.get("rssi")),
                 "last_seen": _plain(info.get("last_seen")),
                 "available": bool(info.get("available", True)),
-                "device_reg_id": info.get("device_reg_id"),
+                # Disabled in HA (e.g. a plug that is only plugged in when needed).
+                "disabled": bool(reg_device and reg_device.disabled_by),
+                "device_reg_id": reg_id,
                 "area_id": info.get("area_id"),
                 "neighbors": [
                     {k: _plain(v) for k, v in nb.items()} for nb in info.get("neighbors") or []

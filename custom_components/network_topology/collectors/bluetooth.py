@@ -32,19 +32,19 @@ def async_registry_by_mac(hass: HomeAssistant) -> dict[str, dict[str, Any]]:
     """Network MAC -> HA device info, for every device with a MAC connection."""
     out: dict[str, dict[str, Any]] = {}
     for device in dr.async_get(hass).devices.values():
-        if device.disabled_by:
-            continue
         for ctype, value in device.connections:
             if ctype == dr.CONNECTION_NETWORK_MAC:
-                out.setdefault(
-                    dr.format_mac(value),
-                    {
-                        "ha_device_id": device.id,
-                        "name": device.name,
-                        "name_by_user": device.name_by_user,
-                        "area_id": device.area_id,
-                    },
-                )
+                entry = {
+                    "ha_device_id": device.id,
+                    "name": device.name,
+                    "name_by_user": device.name_by_user,
+                    "area_id": device.area_id,
+                    "disabled": bool(device.disabled_by),
+                }
+                mac = dr.format_mac(value)
+                # Prefer an enabled device if several share a MAC.
+                if mac not in out or (out[mac]["disabled"] and not entry["disabled"]):
+                    out[mac] = entry
     return out
 
 

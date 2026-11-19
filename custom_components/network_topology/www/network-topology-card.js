@@ -9,6 +9,7 @@
  *   layers: [lan, wlan, zigbee, bluetooth]
  *   show_mesh: false           # extra radio links outside the tree
  *   hide_offline: false
+ *   show_speeds: false         # link rates as labels and line width
  *   warn_lqi_below: 100
  *   warn_rssi_below: -80
  *   collapsed: []              # node ids collapsed at start
@@ -16,7 +17,7 @@
  * No build step, no external libraries.
  */
 
-const CARD_VERSION = "0.2.1";
+const CARD_VERSION = "0.3.0";
 const NS = "http://www.w3.org/2000/svg";
 const NODE_W = 184;
 const NODE_H = 46;
@@ -37,7 +38,8 @@ const KIND_ORDER = ["router", "repeater", "passive_switch", "zigbee_coordinator"
 const STRINGS = {
   de: {
     title: "Netzwerk", layers: { lan: "LAN", wlan: "WLAN", zigbee: "Zigbee", bluetooth: "Bluetooth" },
-    mesh: "Mesh-Verbindungen", hideOffline: "Offline ausblenden", search: "Gerät suchen …",
+    mesh: "Mesh-Verbindungen", hideOffline: "Offline ausblenden", speeds: "Geschwindigkeit", search: "Gerät suchen …",
+    disabled: "deaktiviert", disabledHint: "In Home Assistant deaktiviert. Keine Warnung, kein Zigbee-Nachscan; offline ausgeblendet.",
     fit: "Alles zeigen", zoomIn: "Vergrößern", zoomOut: "Verkleinern", direction: "Ausrichtung wechseln",
     horizontal: "Von links", vertical: "Von oben",
     online: "online", offline: "offline", warnings: "Warnungen", rescan: "Zigbee-Nachscan läuft",
@@ -52,6 +54,7 @@ const STRINGS = {
     },
     f: {
       kind: "Typ", ip: "IP", mac: "MAC", model: "Modell", manufacturer: "Hersteller", connection: "Verbindung",
+      rate: "Linkrate", rateMax: "Maximal", sync: "Sync-Rate", throughput: "Aktueller Durchsatz", lineMax: "Leitung möglich",
       port: "Port", band: "Band", signal: "Signal", lqi: "LQI", ieee: "IEEE", nwk: "NWK", power: "Stromquelle",
       location: "Standort", detected: "Erkannt", sources: "Quellen", scanners: "Bluetooth-Scanner", heard: "Auch gehört von",
       firmware: "Firmware", lastSeen: "Zuletzt gesehen", parent: "Zuordnung",
@@ -67,7 +70,8 @@ const STRINGS = {
   },
   en: {
     title: "Network", layers: { lan: "LAN", wlan: "Wi-Fi", zigbee: "Zigbee", bluetooth: "Bluetooth" },
-    mesh: "Mesh links", hideOffline: "Hide offline", search: "Find device …",
+    mesh: "Mesh links", hideOffline: "Hide offline", speeds: "Speed", search: "Find device …",
+    disabled: "disabled", disabledHint: "Disabled in Home Assistant. No warning, no Zigbee rescan; hidden while offline.",
     fit: "Show all", zoomIn: "Zoom in", zoomOut: "Zoom out", direction: "Switch direction",
     horizontal: "Left to right", vertical: "Top down",
     online: "online", offline: "offline", warnings: "warnings", rescan: "Zigbee rescan running",
@@ -82,6 +86,7 @@ const STRINGS = {
     },
     f: {
       kind: "Type", ip: "IP", mac: "MAC", model: "Model", manufacturer: "Manufacturer", connection: "Connection",
+      rate: "Link rate", rateMax: "Maximum", sync: "Sync rate", throughput: "Current throughput", lineMax: "Line capability",
       port: "Port", band: "Band", signal: "Signal", lqi: "LQI", ieee: "IEEE", nwk: "NWK", power: "Power source",
       location: "Location", detected: "Detected", sources: "Sources", scanners: "Bluetooth scanners", heard: "Also heard by",
       firmware: "Firmware", lastSeen: "Last seen", parent: "Placement",
@@ -159,6 +164,8 @@ const STYLE = `
   .node.infra rect.box { stroke: var(--primary-text-color); stroke-width: 1.5; }
   .node.passive_switch rect.box { stroke: var(--c); stroke-dasharray: 5 4; }
   .node.off { opacity: 0.5; }
+  .node.disabled { opacity: 0.4; }
+  .node.disabled rect.box { stroke-dasharray: 2 3; }
   .node.sel rect.box { stroke: var(--primary-color); stroke-width: 2.6; stroke-dasharray: none; }
   .node:focus { outline: none; } .node:focus-visible rect.box { stroke: var(--primary-color); stroke-width: 2.6; }
   .node .nm { font-size: 13px; font-weight: 500; fill: var(--primary-text-color); }
@@ -199,6 +206,34 @@ function htmlEl(tag, props, parent) {
   return el;
 }
 
+/** Current link rate in kbit/s: the faster direction (link rates are asymmetric on Wi-Fi). */
+function linkRate(l) {
+  const v = [l?.rate_kbit, l?.rate_tx_kbit].filter((x) => typeof x === "number" && x > 0);
+  return v.length ? Math.max(...v) : null;
+}
+
+/** 1000000 -> "1G", 866700 -> "867M", 54000 -> "54M", 512 -> "512k". */
+function rateShort(kbit) {
+  if (!kbit) return "";
+  if (kbit >= 1e6) return `${+(kbit / 1e6).toFixed(kbit % 1e6 ? 1 : 0)}G`;
+  if (kbit >= 1000) return `${Math.round(kbit / 1000)}M`;
+  return `${Math.round(kbit)}k`;
+}
+
+/** kbit/s -> "1 Gbit/s", "866 Mbit/s". */
+function rateLong(kbit, lang) {
+  if (kbit == null) return null;
+  const nf = (v, d) => v.toLocaleString(lang, { maximumFractionDigits: d });
+  if (kbit >= 1e6) return `${nf(kbit / 1e6, 1)} Gbit/s`;
+  if (kbit >= 1000) return `${nf(kbit / 1000, kbit >= 1e4 ? 0 : 1)} Mbit/s`;
+  return `${nf(kbit, 0)} kbit/s`;
+}
+
+/** Stroke width for a link rate: 1 Mbit/s thin, 1 Gbit/s thick. */
+function rateWidth(kbit) {
+  return kbit ? Math.max(1.2, Math.min(6, 1.2 + Math.log10(kbit / 1000 + 1) * 1.6)) : null;
+}
+
 function clip(text, max) {
   text = String(text ?? "");
   return text.length > max ? text.slice(0, max - 1) + "…" : text;
@@ -218,6 +253,7 @@ class NetworkTopologyCard extends HTMLElement {
     this._collapsed = new Set(this._config.collapsed);
     this._showMesh = !!this._config.show_mesh;
     this._hideOffline = !!this._config.hide_offline;
+    this._showSpeeds = !!this._config.show_speeds;
     this._vertical = this._config.layout === "vertical";
     this._fullHeight = this._config.height === "full";
     if (this._root) {
@@ -333,6 +369,11 @@ class NetworkTopologyCard extends HTMLElement {
     offCb.checked = this._hideOffline;
     htmlEl("span", { text: t.hideOffline }, offLbl);
     offCb.addEventListener("change", () => { this._hideOffline = offCb.checked; this._update(); });
+    const spLbl = htmlEl("label", { cls: "toggle" }, bar);
+    const spCb = htmlEl("input", { type: "checkbox" }, spLbl);
+    spCb.checked = this._showSpeeds;
+    htmlEl("span", { text: t.speeds }, spLbl);
+    spCb.addEventListener("change", () => { this._showSpeeds = spCb.checked; this._update(); });
     htmlEl("span", { cls: "spacer" }, bar);
     const search = htmlEl("input", { type: "search", placeholder: t.search, "aria-label": t.search }, bar);
     search.addEventListener("keydown", (e) => { if (e.key === "Enter") this._search(search.value); });
@@ -473,6 +514,7 @@ class NetworkTopologyCard extends HTMLElement {
   }
 
   _warnings(node, link) {
+    if (node.attrs?.disabled) return [];
     const w = this._t.w, c = this._config, out = [];
     if (node.online === false) out.push(w.offline);
     if (link?.lqi != null && link.lqi < c.warn_lqi_below) out.push(w.weakLqi(link.lqi, c.warn_lqi_below));
@@ -501,7 +543,8 @@ class NetworkTopologyCard extends HTMLElement {
       const collapsed = this._collapsed.has(id);
       const kids = collapsed ? [] : (m.children.get(id) || []).map((l) => visit(l.target, l, false)).filter(Boolean);
       const layerOn = isRoot || this._filters.has(LINK_FILTER[link.layer] || "lan");
-      const offHidden = this._hideOffline && node.online === false;
+      // Disabled in HA and currently gone (e.g. unplugged): not worth a box.
+      const offHidden = node.online === false && (this._hideOffline || node.attrs?.disabled);
       if ((layerOn && !offHidden) || kids.length) {
         return { id, node, link, kids, total: (m.children.get(id) || []).length ? this._countDesc(id, m) : 0, collapsed };
       }
@@ -619,13 +662,17 @@ class NetworkTopologyCard extends HTMLElement {
     if (n.kind === "passive_switch") return [t.kinds.passive_switch, n.attrs?.uplink?.split(":").pop()].filter(Boolean).join(" · ");
     if (n.kind?.startsWith("zigbee")) return [t.kinds[n.kind].replace("Zigbee-", "").replace("Zigbee ", ""), link?.lqi != null ? `LQI ${link.lqi}` : null].filter(Boolean).join(" · ");
     if (n.kind === "bluetooth_device") return ["BLE", link?.rssi != null ? `${link.rssi} dBm` : null].filter(Boolean).join(" · ");
+    if (n.attrs?.disabled) return t.disabled;
     if (n.online === false) return t.offline;
+    if (this._showSpeeds && link && ["lan", "wlan"].includes(link.layer) && linkRate(link)) return [n.ip, rateLong(linkRate(link), this._hass.language)].filter(Boolean).join(" · ");
     return n.ip || n.model || t.kinds[n.kind] || "";
   }
 
   _edgeLabel(l) {
-    if (l.layer === "lan" && l.port) return l.port;
-    if (l.layer === "wlan") return [l.band ? `${l.band.replace(".", ",")}G` : null, l.rssi != null ? `${l.rssi}` : null].filter(Boolean).join(" ");
+    const speed = this._showSpeeds ? rateShort(linkRate(l)) : null;
+    if (l.layer === "wan") return this._showSpeeds && l.rate_kbit ? `↓${rateShort(l.rate_kbit)} ↑${rateShort(l.rate_tx_kbit)}` : "";
+    if (l.layer === "lan") return [l.port, speed].filter(Boolean).join(" · ");
+    if (l.layer === "wlan") return [[l.band ? `${l.band.replace(".", ",")}G` : null, l.rssi != null ? `${l.rssi}` : null].filter(Boolean).join(" "), speed].filter(Boolean).join(" · ");
     if (l.layer === "zigbee" && l.lqi != null) return `LQI ${l.lqi}`;
     if (l.layer === "bluetooth" && l.rssi != null) return `${l.rssi} dBm`;
     if (l.layer === "usb") return l.attrs?.radio === "network" ? "LAN" : "USB";
@@ -661,7 +708,8 @@ class NetworkTopologyCard extends HTMLElement {
         const g = this._edgeGeometry(s, p);
         const warn = this._warnings(n, t.link).length && n.online !== false;
         const cls = ["edge", t.link.layer, t.link.connected === false ? "down" : "", t.link.attrs?.route_conflict ? "conflict" : warn ? "warn" : "", onPath.has(t.id) ? "on-path" : "", sel && !onPath.has(t.id) ? "dim" : ""].join(" ");
-        svgEl("path", { d: g.d, class: cls, style: `--c:${LAYER_COLOR[t.link.layer] || LAYER_COLOR.lan}` }, this._gEdges);
+        const width = this._showSpeeds && ["wan", "lan", "wlan"].includes(t.link.layer) ? rateWidth(linkRate(t.link)) : null;
+        svgEl("path", { d: g.d, class: cls, style: `--c:${LAYER_COLOR[t.link.layer] || LAYER_COLOR.lan}${width ? `;stroke-width:${width.toFixed(1)}` : ""}` }, this._gEdges);
         const label = this._edgeLabel(t.link);
         if (label) {
           // Next to the child, where every row has its own space (no pile-up at fan-outs).
@@ -698,7 +746,7 @@ class NetworkTopologyCard extends HTMLElement {
     const n = t.node;
     const layer = LINK_FILTER[t.link?.layer] || (n.kind?.startsWith("zigbee") ? "zigbee" : n.kind?.startsWith("bluetooth") ? "bluetooth" : "lan");
     const warn = this._warnings(n, t.link).length > 0;
-    const cls = ["node", n.kind, INFRA.has(n.kind) ? "infra" : "", n.online === false ? "off" : "", t.id === sel ? "sel" : "", sel && !onPath.has(t.id) ? "dim" : ""].join(" ");
+    const cls = ["node", n.kind, INFRA.has(n.kind) ? "infra" : "", n.attrs?.disabled ? "disabled" : n.online === false ? "off" : "", t.id === sel ? "sel" : "", sel && !onPath.has(t.id) ? "dim" : ""].join(" ");
     const g = svgEl("g", { class: cls, transform: `translate(${p.x},${p.y - NODE_H / 2})`, tabindex: "0", role: "button", "aria-label": n.name, style: `--c:${LAYER_COLOR[layer]}` }, this._gNodes);
     svgEl("rect", { class: "box", width: NODE_W, height: NODE_H, rx: 9 }, g);
     svgEl("circle", { class: "dot", cx: 14, cy: NODE_H / 2, r: 4.5 }, g);
@@ -732,7 +780,7 @@ class NetworkTopologyCard extends HTMLElement {
 
   _renderHead(m) {
     const t = this._t;
-    const devices = [...m.nodes.values()].filter((n) => !INFRA.has(n.kind));
+    const devices = [...m.nodes.values()].filter((n) => !INFRA.has(n.kind) && !n.attrs?.disabled);
     const on = devices.filter((n) => n.online !== false).length;
     let warns = 0;
     for (const n of m.nodes.values()) if (this._warnings(n, m.parentLink.get(n.id)).length) warns += 1;
@@ -762,7 +810,8 @@ class NetworkTopologyCard extends HTMLElement {
     htmlEl("div", { cls: "d-name", text: node.name }, d);
     const tags = htmlEl("div", { cls: "tags" }, d);
     for (const l of node.layers || []) if (LAYER_COLOR[l]) htmlEl("span", { cls: "tag", text: t.layers[l] || l, style: `--c:${LAYER_COLOR[l]}` }, tags);
-    if (node.online === false) htmlEl("span", { cls: "tag", text: t.offline }, tags);
+    if (node.attrs?.disabled) htmlEl("span", { cls: "tag", text: t.disabled }, tags);
+    else if (node.online === false) htmlEl("span", { cls: "tag", text: t.offline }, tags);
 
     const rows = [];
     const add = (k, v, mono) => { if (v !== undefined && v !== null && v !== "") rows.push([k, String(v), mono]); };
@@ -782,6 +831,17 @@ class NetworkTopologyCard extends HTMLElement {
       if (link.band) add(t.f.band, `${link.band.replace(".", ",")} GHz${link.attrs?.ssid ? ` · ${link.attrs.ssid}` : ""}`);
       if (link.rssi != null) add(t.f.signal, `${link.rssi} dBm`);
       if (link.lqi != null) add(t.f.lqi, link.lqi);
+      const lang = this._hass.language;
+      if (link.layer === "wan") {
+        if (link.rate_kbit) add(t.f.sync, `↓ ${rateLong(link.rate_kbit, lang)} · ↑ ${rateLong(link.rate_tx_kbit, lang)}`);
+        if (link.max_rate_kbit) add(t.f.lineMax, rateLong(link.max_rate_kbit, lang));
+        const a2 = link.attrs || {};
+        if (a2.rate_down_bps != null) add(t.f.throughput, `↓ ${rateLong(a2.rate_down_bps / 1000, lang)} · ↑ ${rateLong((a2.rate_up_bps || 0) / 1000, lang)}`);
+      } else if (link.rate_kbit || link.rate_tx_kbit) {
+        const parts = [link.rate_kbit, link.rate_tx_kbit].filter((v) => v).map((v) => rateLong(v, lang));
+        add(t.f.rate, [...new Set(parts)].join(" / "));
+        if (link.max_rate_kbit && link.max_rate_kbit !== linkRate(link)) add(t.f.rateMax, rateLong(link.max_rate_kbit, lang));
+      }
       if (link.attrs?.parent) add(t.f.parent, t.parentHow[link.attrs.parent] || link.attrs.parent);
     }
     if (node.kind === "passive_switch") {
@@ -813,6 +873,7 @@ class NetworkTopologyCard extends HTMLElement {
       htmlEl("span", { text: names.reverse().join(" → ") }, path);
     }
     for (const w of this._warnings(node, link)) htmlEl("div", { cls: "note", text: w }, d);
+    if (node.attrs?.disabled) htmlEl("div", { cls: "note info", text: t.disabledHint }, d);
 
     if (a.ha_device_id) {
       const b = htmlEl("button", { cls: "open", text: t.openDevice }, d);

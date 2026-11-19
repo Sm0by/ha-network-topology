@@ -29,6 +29,8 @@ def conflict_candidates(topo: Topology) -> list[str]:
     for link in topo.links:
         if link.layer != ZIGBEE or not (conflict := link.attrs.get("route_conflict")):
             continue
+        if (node := topo.nodes.get(link.target)) and node.attrs.get("disabled"):
+            continue  # disabled in HA: not worth radio traffic
         for node in (link.source, conflict):
             if ieee := _ieee(node):
                 out.add(ieee)
@@ -46,7 +48,11 @@ def all_routers(topo: Topology) -> list[str]:
     return sorted(
         ieee
         for n in topo.nodes.values()
-        if ZIGBEE in n.layers and n.kind != ZIGBEE_END_DEVICE and n.online and (ieee := _ieee(n.id))
+        if ZIGBEE in n.layers
+        and n.kind != ZIGBEE_END_DEVICE
+        and n.online
+        and not n.attrs.get("disabled")
+        and (ieee := _ieee(n.id))
     )
 
 
