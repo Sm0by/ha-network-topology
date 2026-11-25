@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT / "custom_components" / "network_topology"))
 
 from topology.ble_parse import add_bluetooth  # noqa: E402
 from topology.fritz_parse import parse_mesh  # noqa: E402
+from topology.history import remember_links, restore_links  # noqa: E402
 from topology.switches import apply_switches, load_config  # noqa: E402
 from topology.zha_parse import add_zigbee, attach_point  # noqa: E402
 
@@ -33,6 +34,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--real", action="store_true")
     ap.add_argument("--ha-ip", default="192.168.178.3")
+    ap.add_argument("--offline", action="store_true",
+                    help="take one LAN and one WLAN device offline and re-attach them from memory")
     args = ap.parse_args()
 
     if args.real:
@@ -57,6 +60,8 @@ def main() -> None:
         ]
 
     topo = parse_mesh(mesh["mesh"], mesh.get("hosts", []))
+    if args.offline:
+        simulate_offline(topo)
     configs, warnings = load_config(None)
     apply_switches(topo, configs)
     radio_node, radio = attach_point(topo, ha_ip, None)
@@ -69,6 +74,25 @@ def main() -> None:
     target.parent.mkdir(exist_ok=True)
     target.write_text(json.dumps(data, indent=1, ensure_ascii=False), encoding="utf-8")
     print(f"{target}: {len(data['nodes'])} nodes, {len(data['links'])} links, {len(data['mesh'])} mesh")
+
+
+def simulate_offline(topo) -> None:
+    """What the FRITZ!Box does when a device leaves: drop its link, host offline."""
+    from datetime import datetime, timedelta, timezone
+
+    memory: dict = {}
+    remember_links(topo, memory, datetime.now(timezone.utc) - timedelta(hours=5))
+    for layer in ("lan", "wlan"):
+        link = next(
+            (l for l in topo.links if l.layer == layer and l.connected and l.target.split(":", 1)[-1] in memory
+             and (layer == "wlan" or l.port)),
+            None,
+        )
+        if link:
+            topo.links.remove(link)
+            topo.nodes[link.target].online = False
+            print(f"offline: {topo.nodes[link.target].name} ({layer})")
+    restore_links(topo, memory)
 
 
 if __name__ == "__main__":

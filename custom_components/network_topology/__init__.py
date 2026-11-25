@@ -11,10 +11,11 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
 
 from .const import CARD_FILE, CARD_URL_BASE, DOMAIN
-from .coordinator import NetworkTopologyCoordinator
+from .coordinator import HISTORY_VERSION, NetworkTopologyCoordinator
 from .websocket import async_register_websocket_commands
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -65,3 +66,8 @@ async def async_unload_entry(
 ) -> bool:
     """Unload a config entry."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Forget the remembered device connections when the integration is removed."""
+    await Store(hass, HISTORY_VERSION, f"{DOMAIN}.last_links").async_remove()

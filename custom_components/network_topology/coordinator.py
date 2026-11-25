@@ -24,6 +24,7 @@ from homeassistant.const import (
     CONF_USERNAME,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
@@ -47,6 +48,7 @@ from .const import (
 )
 from .topology.ble_parse import add_bluetooth, enrich_from_registry
 from .topology.fritz_parse import parse_mesh
+from .topology.history import prune, remember_links, restore_links
 from .topology.model import Topology
 from .topology.rescan import RescanPlanner, all_routers, conflict_candidates
 from .topology.switches import apply_switches, load_config
@@ -55,6 +57,10 @@ from .topology.zha_parse import add_zigbee, attach_point
 RescanResult = Literal["started", "busy", "nothing"]
 
 _LOGGER = logging.getLogger(__name__)
+
+HISTORY_VERSION = 1
+# Refresh the stored "last seen" times at least this often (seconds).
+HISTORY_SAVE_INTERVAL = 900
 
 
 def credentials_from_data(data: dict[str, Any]) -> FritzCredentials:
@@ -92,6 +98,11 @@ class NetworkTopologyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.rescan = RescanPlanner()
         self._rescan_running = False
         self._rescan_status: dict[str, Any] = {}
+        self._history_store: Store[dict[str, Any]] = Store(
+            hass, HISTORY_VERSION, f"{DOMAIN}.last_links"
+        )
+        self._history: dict[str, dict[str, Any]] | None = None
+        self._history_saved = 0.0
 
     @property
     def zigbee_available(self) -> bool:
@@ -135,6 +146,21 @@ class NetworkTopologyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._rescan_status["finished"] = dt_util.now().isoformat()
         await self.async_request_refresh()
 
+    async def _async_apply_history(self, topo: Topology) -> None:
+        """Remember current LAN/WLAN parents; re-attach offline devices."""
+        if self._history is None:
+            stored = await self._history_store.async_load()
+            self._history = dict((stored or {}).get("devices", {}))
+        now = dt_util.now()
+        changed = remember_links(topo, self._history, now)
+        changed |= prune(self._history, now)
+        restore_links(topo, self._history)
+        mono = time.monotonic()
+        if changed or mono - self._history_saved > HISTORY_SAVE_INTERVAL:
+            self._history_saved = mono
+            history = self._history
+            self._history_store.async_delay_save(lambda: {"devices": history}, 10)
+
     def _current_credentials(self) -> FritzCredentials:
         data = dict(self.config_entry.data)
         if fritz_id := data.get(CONF_FRITZ_ENTRY_ID):
@@ -171,6 +197,7 @@ class NetworkTopologyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 _LOGGER.warning("Could not read %s: %s", CONFIG_FILE, err)
                 raw_config = None
             topo = parse_mesh(mesh, hosts, wan)
+            await self._async_apply_history(topo)
             configs, config_warnings = load_config(raw_config)
             topo.warnings.extend(config_warnings)
             apply_switches(topo, configs, min_devices=DEFAULT_MIN_SWITCH_DEVICES)

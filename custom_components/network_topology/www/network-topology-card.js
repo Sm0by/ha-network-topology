@@ -17,7 +17,7 @@
  * No build step, no external libraries.
  */
 
-const CARD_VERSION = "0.3.1";
+const CARD_VERSION = "0.4.0";
 const NS = "http://www.w3.org/2000/svg";
 const NODE_W = 184;
 const NODE_H = 46;
@@ -39,6 +39,7 @@ const STRINGS = {
   de: {
     title: "Netzwerk", layers: { lan: "LAN", wlan: "WLAN", zigbee: "Zigbee", bluetooth: "Bluetooth" },
     mesh: "Mesh-Verbindungen", hideOffline: "Offline ausblenden", speeds: "Geschwindigkeit", search: "Gerät suchen …",
+    remembered: "Letzte bekannte Verbindung. Die FRITZ!Box meldet das Gerät gerade nicht.",
     disabled: "deaktiviert", disabledHint: "In Home Assistant deaktiviert. Keine Warnung, kein Zigbee-Nachscan; offline ausgeblendet.",
     fit: "Alles zeigen", zoomIn: "Vergrößern", zoomOut: "Verkleinern", direction: "Ausrichtung wechseln",
     horizontal: "Von links", vertical: "Von oben",
@@ -57,7 +58,7 @@ const STRINGS = {
       rate: "Linkrate", rateMax: "Maximal", sync: "Sync-Rate", throughput: "Aktueller Durchsatz", lineMax: "Leitung möglich", wanPort: "WAN-Port", access: "Anschluss",
       port: "Port", band: "Band", signal: "Signal", lqi: "LQI", ieee: "IEEE", nwk: "NWK", power: "Stromquelle",
       location: "Standort", detected: "Erkannt", sources: "Quellen", scanners: "Bluetooth-Scanner", heard: "Auch gehört von",
-      firmware: "Firmware", lastSeen: "Zuletzt gesehen", parent: "Zuordnung",
+      firmware: "Firmware", lastSeen: "Zuletzt gesehen", lastConnected: "Zuletzt verbunden", parent: "Zuordnung",
     },
     w: {
       offline: "Gerät ist offline.", weakLqi: (v, t) => `Schwaches Zigbee-Signal (LQI ${v}, Schwelle ${t}).`,
@@ -71,6 +72,7 @@ const STRINGS = {
   en: {
     title: "Network", layers: { lan: "LAN", wlan: "Wi-Fi", zigbee: "Zigbee", bluetooth: "Bluetooth" },
     mesh: "Mesh links", hideOffline: "Hide offline", speeds: "Speed", search: "Find device …",
+    remembered: "Last known connection. The FRITZ!Box does not report the device right now.",
     disabled: "disabled", disabledHint: "Disabled in Home Assistant. No warning, no Zigbee rescan; hidden while offline.",
     fit: "Show all", zoomIn: "Zoom in", zoomOut: "Zoom out", direction: "Switch direction",
     horizontal: "Left to right", vertical: "Top down",
@@ -89,7 +91,7 @@ const STRINGS = {
       rate: "Link rate", rateMax: "Maximum", sync: "Sync rate", throughput: "Current throughput", lineMax: "Line capability",
       port: "Port", band: "Band", signal: "Signal", lqi: "LQI", ieee: "IEEE", nwk: "NWK", power: "Power source",
       location: "Location", detected: "Detected", sources: "Sources", scanners: "Bluetooth scanners", heard: "Also heard by",
-      firmware: "Firmware", lastSeen: "Last seen", parent: "Placement",
+      firmware: "Firmware", lastSeen: "Last seen", lastConnected: "Last connected", parent: "Placement",
     },
     w: {
       offline: "Device is offline.", weakLqi: (v, t) => `Weak Zigbee signal (LQI ${v}, threshold ${t}).`,
@@ -838,6 +840,7 @@ class NetworkTopologyCard extends HTMLElement {
     if (link) {
       add(t.f.connection, [t.layers[LINK_FILTER[link.layer]] || link.layer, m.nodes.get(link.source)?.name].filter(Boolean).join(" · "));
       add(t.f.port, link.port || link.attrs?.via_port);
+      if (link.attrs?.last_connected) add(t.f.lastConnected, String(link.attrs.last_connected).replace("T", " ").slice(0, 16));
       if (link.band) add(t.f.band, `${link.band.replace(".", ",")} GHz${link.attrs?.ssid ? ` · ${link.attrs.ssid}` : ""}`);
       if (link.rssi != null) add(t.f.signal, `${link.rssi} dBm`);
       if (link.lqi != null) add(t.f.lqi, link.lqi);
@@ -891,6 +894,7 @@ class NetworkTopologyCard extends HTMLElement {
     }
     for (const w of this._warnings(node, link)) htmlEl("div", { cls: "note", text: w }, d);
     if (node.attrs?.disabled) htmlEl("div", { cls: "note info", text: t.disabledHint }, d);
+    if (link?.attrs?.remembered) htmlEl("div", { cls: "note info", text: t.remembered }, d);
 
     if (a.ha_device_id) {
       const b = htmlEl("button", { cls: "open", text: t.openDevice }, d);

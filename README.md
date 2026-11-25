@@ -98,6 +98,7 @@ Funktionen:
 - **Detailpanel** mit Werten, Datenquelle, Weg zum Internet und Link zur HA-Geräteseite.
 - **Warnungen:** offline, schwaches LQI oder RSSI, `route_conflict` (rot), unbekannter Parent.
 - **Geschwindigkeit:** LAN- und WLAN-Linkraten aus der Mesh-Topologie der FRITZ!Box, für WAN Sync-Rate, mögliche Leitungsrate und aktueller Durchsatz. Der Schalter blendet sie als Beschriftung ein und macht schnelle Verbindungen dicker. Die Details stehen immer im Detailpanel.
+- **Offline-Geräte bleiben an ihrem Platz:** Die FRITZ!Box vergisst die Verbindung eines Geräts kurz nachdem es offline geht. Die Integration merkt sich deshalb für jedes LAN- und WLAN-Gerät die letzte Verbindung (Box oder Repeater, Port, Band) und hängt es offline dort wieder ein, also auch hinter demselben Switch. Die Verbindung erscheint blass, das Detailpanel zeigt „Zuletzt verbunden“. Gespeichert wird in `.storage/network_topology.last_links`; Geräte, die 90 Tage nicht verbunden waren, werden vergessen.
 - **Deaktivierte Geräte:** In HA deaktivierte Geräte erscheinen grau ohne Warnung und lösen keinen Zigbee-Nachscan aus. Sind sie offline, etwa eine ausgesteckte Steckdose, blendet die Karte sie aus.
 - **Hinweise:** Warnungen der Integration und Geräte ohne Verbindung unten in der Karte.
 
