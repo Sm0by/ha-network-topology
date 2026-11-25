@@ -100,6 +100,11 @@ class HistoryTests(unittest.TestCase):
         link = topo.parent_link(f"mac:{mac}")
         self.assertEqual((link.source, link.port), (BOX, "LAN4"))
 
+    def test_stale_placeholder_host_is_no_device(self):
+        data = copy.deepcopy(MESH)
+        data["hosts"].append({"name": "Switch", "mac": "FA:CE:4B:16:AF:DE", "status": False})
+        self.assertNotIn("mac:fa:ce:4b:16:af:de", _topo(data).nodes)
+
     def test_prune_forgets_old_devices(self):
         self.memory["aa:bb:cc:dd:ee:ff"] = {"parent": BOX, "layer": "lan", "seen": (NOW - timedelta(days=91)).isoformat()}
         self.memory["11:22:33:44:55:66"] = {"parent": BOX, "layer": "lan", "seen": "kaputt"}

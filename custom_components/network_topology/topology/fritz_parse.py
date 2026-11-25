@@ -198,6 +198,8 @@ def parse_mesh(
         node_id = f"mac:{mac}"
         if mac in mac_owner or node_id in topo.nodes:
             continue
+        if mac.startswith(_PLACEHOLDER_PREFIX):
+            continue  # leftover entry of a switch the box once detected, not a device
         iface_type = (host.get("interface_type") or "").lower()
         layer = WLAN if "802.11" in iface_type else LAN if "ethernet" in iface_type else None
         topo.add_node(
@@ -242,11 +244,13 @@ def _wan_link(router: str, wan: dict[str, Any] | None) -> Link:
     linked = [v for v in (kbit("linked_down"), kbit("linked_up")) if v]
     link.max_rate_kbit = max(linked) if linked else None
     synced = max((v for v in (link.rate_kbit, link.rate_tx_kbit) if v), default=0)
-    if link.max_rate_kbit and link.max_rate_kbit < synced:
-        # Ethernet/fibre/cable WAN: no line attainable rate, the value is junk.
-        link.max_rate_kbit = None
-    if access := wan.get("access_type"):
+    access = wan.get("access_type")
+    if access:
         link.attrs["access_type"] = access
+    if (access and access != "DSL") or (link.max_rate_kbit and link.max_rate_kbit < synced):
+        # Behind a modem/ONT there is no attainable line rate; the value is
+        # the port speed or junk.
+        link.max_rate_kbit = None
     for key in ("rate_down", "rate_up"):
         value = wan.get(key)
         if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= 0:

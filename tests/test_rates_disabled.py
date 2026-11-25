@@ -61,6 +61,10 @@ class RateTests(unittest.TestCase):
         self.assertEqual(link.rate_kbit, 1_000_000)
         self.assertIsNone(link.max_rate_kbit)
         self.assertEqual(link.attrs["access_type"], "Ethernet")
+        wan.update(linked_down=1_000_000_000, linked_up=1_000_000_000)  # port speed again
+        self.assertIsNone(mesh_topo(wan).parent_link(BOX).max_rate_kbit)
+        wan.update(access_type="DSL", max_down=250_000_000, linked_down=300_000_000)
+        self.assertEqual(mesh_topo(wan).parent_link(BOX).max_rate_kbit, 1_000_000)
 
     def test_wan_disconnected_and_missing(self):
         self.assertFalse(mesh_topo({"max_down": 0, "max_up": 0, "connected": False}).parent_link(BOX).connected)
