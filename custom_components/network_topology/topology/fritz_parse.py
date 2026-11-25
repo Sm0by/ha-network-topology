@@ -185,6 +185,8 @@ def parse_mesh(
         if node.kind == CLIENT and not host_known:
             node.online = best.connected
 
+    _flag_uplink_port_clients(topo)
+
     # Internet uplink of the router.
     if router := topo.router_id():
         topo.nodes[router].layers = [LAN, WLAN]
@@ -260,6 +262,22 @@ def _wan_link(router: str, wan: dict[str, Any] | None) -> Link:
     return link
 
 
+def _flag_uplink_port_clients(topo: Topology) -> None:
+    """Mark clients reported on the port a repeater uses as its own uplink.
+
+    Such a device cannot sit behind the repeater; FRITZ!OS sometimes reports
+    a device there when it learns its MAC on the repeater's LAN bridge.
+    """
+    uplink_ports: dict[str, str] = {}
+    for link in topo.links:
+        if link.layer == LAN and (port := link.attrs.pop("child_port", None)):
+            uplink_ports[link.target] = port
+            topo.nodes[link.target].attrs["uplink_port"] = port
+    for link in topo.links:
+        if link.layer == LAN and link.port and uplink_ports.get(link.source) == link.port:
+            link.attrs["suspect"] = "uplink_port"
+
+
 def _build_link(
     raw: dict[str, Any],
     node_ids: dict[str, str],
@@ -274,9 +292,11 @@ def _build_link(
     if ranks.get(b, 0) > ranks.get(a, 0):
         parent, child = b, a
         parent_iface = ifaces.get(raw.get("node_interface_2_uid", ""), {})
+        child_iface = ifaces.get(raw.get("node_interface_1_uid", ""), {})
     else:
         parent, child = a, b
         parent_iface = ifaces.get(raw.get("node_interface_1_uid", ""), {})
+        child_iface = ifaces.get(raw.get("node_interface_2_uid", ""), {})
 
     link_type = (raw.get("type") or parent_iface.get("type") or "").upper()
     layer = WLAN if link_type == "WLAN" else LAN
@@ -304,4 +324,6 @@ def _build_link(
         link.port = lan_port(iface_name)
     if iface_name:
         link.attrs["interface"] = iface_name
+    if ranks.get(child, 0) > 0 and (child_port := lan_port(child_iface.get("name"))):
+        link.attrs["child_port"] = child_port  # infra device: its own uplink port
     return link

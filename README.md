@@ -98,7 +98,16 @@ Funktionen:
 - **Detailpanel** mit Werten, Datenquelle, Weg zum Internet und Link zur HA-Geräteseite.
 - **Warnungen:** offline, schwaches LQI oder RSSI, `route_conflict` (rot), unbekannter Parent.
 - **Geschwindigkeit:** LAN- und WLAN-Linkraten aus der Mesh-Topologie der FRITZ!Box, für WAN Sync-Rate, mögliche Leitungsrate und aktueller Durchsatz. Der Schalter blendet sie als Beschriftung ein und macht schnelle Verbindungen dicker. Die Details stehen immer im Detailpanel.
-- **Offline-Geräte bleiben an ihrem Platz:** Die FRITZ!Box vergisst die Verbindung eines Geräts kurz nachdem es offline geht. Die Integration merkt sich deshalb für jedes LAN- und WLAN-Gerät die letzte Verbindung (Box oder Repeater, Port, Band) und hängt es offline dort wieder ein, also auch hinter demselben Switch. Die Verbindung erscheint blass, das Detailpanel zeigt „Zuletzt verbunden“. Gespeichert wird in `.storage/network_topology.last_links`; Geräte, die 90 Tage nicht verbunden waren, werden vergessen.
+- **Offline-Geräte bleiben an ihrem Platz:** Die FRITZ!Box vergisst die Verbindung eines Geräts kurz nachdem es offline geht. Die Integration zählt deshalb, wie oft jedes LAN- und WLAN-Gerät wo gesehen wurde (Box oder Repeater, Port, Band), und hängt es offline an seinem üblichen Platz wieder ein, also auch hinter demselben Switch. Ein dauerhafter Umzug setzt sich nach etwa zwei Stunden durch, kurze Ausreißer zählen kaum. Die Verbindung erscheint blass, das Detailpanel zeigt „Zuletzt verbunden“. Gespeichert wird in `.storage/network_topology.last_links`; Plätze, die 90 Tage nicht vorkamen, werden vergessen.
+- **Unplausible Meldungen der FRITZ!Box:** Manchmal meldet die Box ein Gerät an dem LAN-Port, mit dem ein Repeater selbst angeschlossen ist. Dort kann es nicht hängen. Die Integration speichert solche Meldungen nicht und zeigt das Gerät an seinem üblichen Platz. Kennt sie keinen, bleibt die Meldung mit einem Hinweis stehen. Endgültig festlegen lässt sich der Platz mit `members` in `network_topology.yaml`:
+
+  ```yaml
+  passive_switches:
+    - id: sw_schlafzimmer
+      name: Switch Schlafzimmer
+      uplink: fritzbox:LAN2
+      members: ["00:04:4B:71:72:B7"]
+  ```
 - **Deaktivierte Geräte:** In HA deaktivierte Geräte erscheinen grau ohne Warnung und lösen keinen Zigbee-Nachscan aus. Sind sie offline, etwa eine ausgesteckte Steckdose, blendet die Karte sie aus.
 - **Hinweise:** Warnungen der Integration und Geräte ohne Verbindung unten in der Karte.
 

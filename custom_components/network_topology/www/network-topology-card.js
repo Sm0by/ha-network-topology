@@ -17,7 +17,7 @@
  * No build step, no external libraries.
  */
 
-const CARD_VERSION = "0.4.0";
+const CARD_VERSION = "0.4.1";
 const NS = "http://www.w3.org/2000/svg";
 const NODE_W = 184;
 const NODE_H = 46;
@@ -40,6 +40,8 @@ const STRINGS = {
     title: "Netzwerk", layers: { lan: "LAN", wlan: "WLAN", zigbee: "Zigbee", bluetooth: "Bluetooth" },
     mesh: "Mesh-Verbindungen", hideOffline: "Offline ausblenden", speeds: "Geschwindigkeit", search: "Gerät suchen …",
     remembered: "Letzte bekannte Verbindung. Die FRITZ!Box meldet das Gerät gerade nicht.",
+    placedByHistory: (r) => `Die FRITZ!Box meldet das Gerät an ${r}, dem Uplink-Port des Repeaters. Dort kann es nicht hängen; angezeigt wird sein üblicher Platz.`,
+    suspect: "Die FRITZ!Box meldet das Gerät am Uplink-Port des Repeaters. Dort kann es nicht hängen; die Zuordnung ist vermutlich falsch. Festlegen lässt sie sich über members in network_topology.yaml.",
     disabled: "deaktiviert", disabledHint: "In Home Assistant deaktiviert. Keine Warnung, kein Zigbee-Nachscan; offline ausgeblendet.",
     fit: "Alles zeigen", zoomIn: "Vergrößern", zoomOut: "Verkleinern", direction: "Ausrichtung wechseln",
     horizontal: "Von links", vertical: "Von oben",
@@ -73,6 +75,8 @@ const STRINGS = {
     title: "Network", layers: { lan: "LAN", wlan: "Wi-Fi", zigbee: "Zigbee", bluetooth: "Bluetooth" },
     mesh: "Mesh links", hideOffline: "Hide offline", speeds: "Speed", search: "Find device …",
     remembered: "Last known connection. The FRITZ!Box does not report the device right now.",
+    placedByHistory: (r) => `The FRITZ!Box reports the device at ${r}, the repeater's uplink port. It cannot be there; showing its usual place.`,
+    suspect: "The FRITZ!Box reports the device on the repeater's uplink port. It cannot be there; the placement is probably wrong. Pin it with members in network_topology.yaml.",
     disabled: "disabled", disabledHint: "Disabled in Home Assistant. No warning, no Zigbee rescan; hidden while offline.",
     fit: "Show all", zoomIn: "Zoom in", zoomOut: "Zoom out", direction: "Switch direction",
     horizontal: "Left to right", vertical: "Top down",
@@ -895,6 +899,8 @@ class NetworkTopologyCard extends HTMLElement {
     for (const w of this._warnings(node, link)) htmlEl("div", { cls: "note", text: w }, d);
     if (node.attrs?.disabled) htmlEl("div", { cls: "note info", text: t.disabledHint }, d);
     if (link?.attrs?.remembered) htmlEl("div", { cls: "note info", text: t.remembered }, d);
+    if (link?.attrs?.placed_by === "history") htmlEl("div", { cls: "note info", text: t.placedByHistory(link.attrs.reported_parent) }, d);
+    else if (link?.attrs?.suspect) htmlEl("div", { cls: "note warn", text: t.suspect }, d);
 
     if (a.ha_device_id) {
       const b = htmlEl("button", { cls: "open", text: t.openDevice }, d);
